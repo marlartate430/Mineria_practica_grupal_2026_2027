@@ -1,0 +1,46 @@
+- Dataset: Verbal Autopsy
+
+- Antecedentes: Word2Vector
+	- Fuentes: Hugging Face
+	Dado un vector de palabras y una palabra objetivo, se realiza un
+	conteo de contextos, viendo qué palabras se encuentran al rededor de 
+	la palabra objetivo. Después mediante una red neuronal obtiene un
+	vector denso
+
+	Asociar palabras mediante Álgebra: En un espacio las palabras España y
+	Madrid tienen un vector. Dado Francia, el vector a París será  el
+	mismo?.
+
+- Vectorización
+	- **Métodos que conocemos**: Representaciones simbólicas (Incontextuales)
+		- Bag of Words
+		- TF-IDF
+	- Aproximaciones densas: Utiliza un número de dimensiones constante y específico
+		- Estáticas: Gensim
+		- Contextuales:
+			- transformers
+			- LLM: Dado un texto puede generar textos, que tendrá
+			  relación el texto escrito en el input.
+		- Topic modeling: Dado un texto y un vector con la longitud de
+		  los temas posibles. Asignar a cada índice que corresponde
+		  con un tema, la probabilidad de que ese texto corresponda
+		  con el tema.
+
+	  Usar cambios de base.
+
+- Algoritmo clustering SIN emplear librerías externas
+	- Fuentes:
+		- https://en.wikipedia.org/wiki/K-means_clustering
+		- https://en.wikipedia.org/wiki/K-means++
+	
+	- Contribución
+
+- Gestión
+	- Tarea/Responsable
+		- Cómo es el Software
+
+- Tensorflow projector: Para poder visualizar las instancias. Con opción de
+  PCA. Permite ver palabras similares en semántica dada una palabra. Ejemplos:
+  dado un idioma, devuelve otros idiomas; dado una ciudad grande, devuelve
+  otras ciudades; dado un nombre francés femenino; devuelve otros nombres de
+  francesas. Embedding una palabra en un vector.
