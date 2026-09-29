@@ -1,0 +1,35 @@
+Antecedentes (word2vec)
+Vectorización
+
+Algoritmo clustering sin emplear librerías externas
+       -- contribución
+
+Gestion
+      tarea /responsable
+	sw
+
+- The curse of dimensionality !! importante
+
+- BoW, TFIDF, Tf. (con Ngramas) --> simbólicas (aproximaciones para vecotrizar)
+- Densas --> usas un numero de dimensiones (num constante "pequeño" m=500 --> pasar de 75000 a 500 --> selección de atributos (adibidez, cambio de base como hicimos))
+
+-Tensor Flow projector (embeding -> embediendo palabras en un vector)
+	- hacemos el cluster con criterios de cercania
+	- buscamos una tecnica explotaroria
+	- hay algo que se traslada y que te da un significado de las palabras
+
+- Transformers (aproximaciones para vecotrizar) ---> densas
+
+- LLM (aproximaciones para vecotrizar) ---> densas
+
+
+--- Conteos viendo el contexto 
+- conteos de cuantas veces aparece la palbra target  ---- > Con una sare neuronala ( van proyectando) 
+- Aislar la palabra y hago LeftContext y rightContex   ----> Redes neuronales
+	- De esos conteos se reducen los vectores
+
+consigues el embeding de la palabra target
+
+
+No solo busca similitudes sino también asociaciones
+- Ir en la misma dirección 
