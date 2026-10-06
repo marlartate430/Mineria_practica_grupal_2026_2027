@@ -1,5 +1,6 @@
 import numpy as np
 from abc import ABC, abstractmethod # Libreria que permite hacer clases abstractas y metodos abstractos
+import distance
 
 """
 ¿POR QUE CREAR CLASES ABSTRACTAS Y METODOS ABSTRACTOS?
@@ -9,9 +10,10 @@ Tenemos en mente utilizar diferentes implementaciones de kmeans.
 - Otra utilizando distancia euclidea
 - Otra utilizando diferencia del coseno
 - Otra utilizando Sentence Similarity
+- Variantes que devuelven el mejor numero de clusters
 """
 
-class KMeans (ABC):
+class IKMeans (ABC):
     """
     Interfaz abstracta para los modelos de clustering.
     Garantiza que cualquier algoritmo que implementemos sea compatible con 
@@ -43,3 +45,31 @@ class KMeans (ABC):
         """
         self.fit(X)
         return self.predict(X)
+
+class KMeans(IKMeans):
+    def __init__(self, p_cluster_number: int):
+        pass
+
+    def fit(self, p_X: np.ndarray) -> None:
+        """
+        ¿Como realizar la distancia?
+        distance.euclidean(v1, v2)
+        """
+        pass
+    
+    def predict(self, p_X: np.ndarray) -> np.ndarray:
+        pass
+        
+class CosineKMeans(IKMeans):
+    def __init__(self, p_cluster_number: int):
+        pass
+
+    def fit(self, p_X: np.ndarray) -> None:
+        """
+        ¿Como realizar la distancia?
+        distance.cosine_similarity(v1, v2)
+        """
+        pass
+    
+    def predict(self, p_X: np.ndarray) -> np.ndarray:
+        pass
