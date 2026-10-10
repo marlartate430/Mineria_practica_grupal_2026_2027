@@ -2,6 +2,7 @@ import numpy as np
 from abc import ABC, abstractmethod # Libreria que permite hacer clases abstractas y metodos abstractos
 import distance
 from typing import Tuple
+from scipy.spatial.distance import cdist
 
 ## INICIALIZACION CON KMEANS++
 """
@@ -164,62 +165,6 @@ class IKMeans (ABC):
         self.fit(X)
         return self.predict(X)
 
-class Static_list:
-    def __init__(self, p_size: Tuple[int]):
-        self.size: Tuple[int] = p_size
-        self.array: np.ndarray = np.empty(self.size, dtype=np.int32)
-        self.array_length: np.ndarray = np.zeros(self.size[0], dtype=np.int32)
-
-    def empty(self) -> None:
-        self.array_length = 0
-
-    def append(self, p_row: int, p_instance: np.array) -> None:
-        if p_row < self.size[0]:
-            current_row_length: int = self.array_length[p_row]
-            if current_row_length < self.size[1]:
-                self.array[p_row][current_row_length] = p_instance
-                self.array_length[p_row] = current_row_length + 1
-
-    def __repr__(self):
-        return str(self.array)
-
-class Clusters(Static_list):
-    def get_new_centroids(self) -> np.ndarray:
-        result: np.ndarray = np.empty((self.size[0], self.size[2]))
-        for current_index, current_cluster in enumerate(self.array):
-            current_length: int = self.array_length[current_index]
-            acc_instance: np.ndarray = np.zeros(self.size[2], dtype=np.float64)
-
-            for current_instance in current_cluster:
-                acc_instance += current_instance
-
-            result[current_index] = acc_instance/current_length
-
-        return result
-
-class Centroids:
-    def __init__(self, p_array: np.ndarray):
-        self.array: np.ndarray = p_array
-        self.array_length: int = len(self.array)
-
-    def get_distance_to_cluster(self, p_instance: np.ndarray, p_index: int) -> np.float64:
-        if p_index < self.array_length:
-            return distance.euclidean(p_instance, self.array[p_index])
-
-        return -1.0
-
-    def get_distance_to_each_cluster(self, p_instance: np.ndarray, p_row_offset: int = 0) -> np.float64:
-        iterated_centroids: np.ndarray = self.array[p_row_offset:]
-
-        for current_centroid in iterated_centroids:
-            yield distance.euclidean(p_instance, current_centroid)
-
-    def __getitem__(self, p_index):
-        return self.array[p_index]
-
-    def __repr__(self):
-        return str(self.array)
-
 class KMeans(IKMeans):
     def __init__(self, p_cluster_number: int):
         self.cluster_number: int = p_cluster_number
@@ -230,45 +175,41 @@ class KMeans(IKMeans):
         ¿Como realizar la distancia?
         distance.euclidean(v1, v2)
         """
-        p_X_row_length: int = len(p_X)
-        p_X_column_length: int = len(p_X.T)
 
-        # Random centroid chooser
+        N_instancias, D_dimensiones = X.shape
+        
+        # 1. Inicialización aleatoria de centroides (Puedes cambiarlo por K-Means++ luego)
         rng = np.random.default_rng()
-        centroid_rows: np.ndarray = rng.choice(p_X_row_length, size=self.cluster_number, replace=False)
-        centroids: Centroids = Centroids(p_X[centroid_rows])
-
-        print(centroids)
-
-        clusters: Clusters = Clusters((self.cluster_number, p_X_row_length, p_X_column_length))
-
-        stop: bool = False
-
-        while not stop:
-            for current_instance in p_X:
-                min_distance: np.float64 = centroids.get_distance_to_cluster(current_instance, 0)
-                closest_index: int = 0
-
-                distance_generator = centroids.get_distance_to_each_cluster(current_instance, 1)
-                current_cluster_index: int = 1
-
-                for current_distance in distance_generator:
-                    if current_distance < min_distance:
-                        min_distance = current_distance
-                        closest_index = current_cluster_index
-
-                    current_cluster_index += 1
+        indices_aleatorios = rng.choice(N_instancias, size=self.n_clusters, replace=False)
+        self.centroids = X[indices_aleatorios].copy()
+        
+        for i in range(self.max_iter):
+            # --- FASE DE ASIGNACIÓN (Súper optimizada en C) ---
+            # cdist calcula la distancia de todos los puntos a todos los centroides de golpe
+            distancias = cdist(X, self.centroids, metric=self.metric)
+            
+            # argmin devuelve el índice del centroide más cercano para cada punto (axis=1)
+            etiquetas = np.argmin(distancias, axis=1)
+            
+            # --- FASE DE ACTUALIZACIÓN ---
+            nuevos_centroides = np.zeros((self.n_clusters, D_dimensiones))
+            for k in range(self.n_clusters):
+                # Filtramos los puntos asignados a este cluster 'k' (indexación booleana súper rápida)
+                puntos_del_cluster = X[etiquetas == k]
                 
-                clusters.append(closest_index, current_instance)
-
-            new_centroids: Centroids = Centroids(clusters.get_new_centroids())
-
-            if new_centroids.equals(centroids, p_threshold):
-                stop = True
-            else:
-                centroids = new_centroids
-
-        self.centroids = new_centroids
+                if len(puntos_del_cluster) > 0:
+                    nuevos_centroides[k] = puntos_del_cluster.mean(axis=0)
+                else:
+                    # Si un cluster se queda vacío, le asignamos un punto aleatorio para que no colapse
+                    nuevos_centroides[k] = X[rng.choice(N_instancias)]
+                
+            # --- COMPROBACIÓN DE CONVERGENCIA ---
+            desplazamiento = np.linalg.norm(self.centroids - nuevos_centroides)
+            self.centroids = nuevos_centroides
+            
+            if desplazamiento <= self.tol:
+                print(f"[{self.metric.upper()}] Convergencia alcanzada en la iteración {i+1}")
+                break
     
     def predict(self, p_X: np.ndarray) -> np.ndarray:
         if not self.centroids is None:
