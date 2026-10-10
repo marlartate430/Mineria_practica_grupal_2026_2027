@@ -1,11 +1,13 @@
 import numpy as np
 from abc import ABC, abstractmethod # Libreria que permite hacer clases abstractas y metodos abstractos
 import distance
+from typing import Tuple
 
 ## INICIALIZACION CON KMEANS++
-import numpy as np
-
-
+"""
+Para calcular las distancias utiliza la funcion
+'euclidean(v1, v2) -> np.float64' que se encuentran en 'distance.py' 
+"""
 def kmeans_plus_plus(
     X: np.ndarray,
     k: int,
@@ -122,9 +124,8 @@ def kmeans_plus_plus(
 """
 ¿POR QUE CREAR CLASES ABSTRACTAS Y METODOS ABSTRACTOS?
 Tenemos en mente utilizar diferentes implementaciones de kmeans.
-- Una con KMeans normal
-- Otra con KMeans++
-- Otra utilizando distancia euclidea
+- Una con KMeans normal (distancia euclidea)
+- Otra con KMeans++ (distancia euclidea)
 - Otra utilizando diferencia del coseno
 - Otra utilizando Sentence Similarity
 - Variantes que devuelven el mejor numero de clusters
@@ -163,19 +164,117 @@ class IKMeans (ABC):
         self.fit(X)
         return self.predict(X)
 
+class Static_list:
+    def __init__(self, p_size: Tuple[int]):
+        self.size: Tuple[int] = p_size
+        self.array: np.ndarray = np.empty(self.size, dtype=np.int32)
+        self.array_length: np.ndarray = np.zeros(self.size[0], dtype=np.int32)
+
+    def empty(self) -> None:
+        self.array_length = 0
+
+    def append(self, p_row: int, p_instance: np.array) -> None:
+        if p_row < self.size[0]:
+            current_row_length: int = self.array_length[p_row]
+            if current_row_length < self.size[1]:
+                self.array[p_row][current_row_length] = p_instance
+                self.array_length[p_row] = current_row_length + 1
+
+    def __repr__(self):
+        return str(self.array)
+
+class Clusters(Static_list):
+    def get_new_centroids(self) -> np.ndarray:
+        result: np.ndarray = np.empty((self.size[0], self.size[2]))
+        for current_index, current_cluster in enumerate(self.array):
+            current_length: int = self.array_length[current_index]
+            acc_instance: np.ndarray = np.zeros(self.size[2], dtype=np.float64)
+
+            for current_instance in current_cluster:
+                acc_instance += current_instance
+
+            result[current_index] = acc_instance/current_length
+
+        return result
+
+class Centroids:
+    def __init__(self, p_array: np.ndarray):
+        self.array: np.ndarray = p_array
+        self.array_length: int = len(self.array)
+
+    def get_distance_to_cluster(self, p_instance: np.ndarray, p_index: int) -> np.float64:
+        if p_index < self.array_length:
+            return distance.euclidean(p_instance, self.array[p_index])
+
+        return -1.0
+
+    def get_distance_to_each_cluster(self, p_instance: np.ndarray, p_row_offset: int = 0) -> np.float64:
+        iterated_centroids: np.ndarray = self.array[p_row_offset:]
+
+        for current_centroid in iterated_centroids:
+            yield distance.euclidean(p_instance, current_centroid)
+
+    def __getitem__(self, p_index):
+        return self.array[p_index]
+
+    def __repr__(self):
+        return str(self.array)
+
 class KMeans(IKMeans):
     def __init__(self, p_cluster_number: int):
-        pass
+        self.cluster_number: int = p_cluster_number
+        self.centroids: np.ndarray = None
 
-    def fit(self, p_X: np.ndarray) -> None:
+    def fit(self, p_X: np.ndarray, p_threshold: float = 0.0) -> None:
         """
         ¿Como realizar la distancia?
         distance.euclidean(v1, v2)
         """
-        pass
+        p_X_row_length: int = len(p_X)
+        p_X_column_length: int = len(p_X.T)
+
+        # Random centroid chooser
+        rng = np.random.default_rng()
+        centroid_rows: np.ndarray = rng.choice(p_X_row_length, size=self.cluster_number, replace=False)
+        centroids: Centroids = Centroids(p_X[centroid_rows])
+
+        print(centroids)
+
+        clusters: Clusters = Clusters((self.cluster_number, p_X_row_length, p_X_column_length))
+
+        stop: bool = False
+
+        while not stop:
+            for current_instance in p_X:
+                min_distance: np.float64 = centroids.get_distance_to_cluster(current_instance, 0)
+                closest_index: int = 0
+
+                distance_generator = centroids.get_distance_to_each_cluster(current_instance, 1)
+                current_cluster_index: int = 1
+
+                for current_distance in distance_generator:
+                    if current_distance < min_distance:
+                        min_distance = current_distance
+                        closest_index = current_cluster_index
+
+                    current_cluster_index += 1
+                
+                clusters.append(closest_index, current_instance)
+
+            new_centroids: Centroids = Centroids(clusters.get_new_centroids())
+
+            if new_centroids.equals(centroids, p_threshold):
+                stop = True
+            else:
+                centroids = new_centroids
+
+        self.centroids = new_centroids
     
     def predict(self, p_X: np.ndarray) -> np.ndarray:
-        pass
+        if not self.centroids is None:
+            pass
+        else:
+            raise "The model has not fitted yet. Call 'fit' method before calling 'predict'."
         
 class CosineKMeans(IKMeans):
     def __init__(self, p_cluster_number: int):
@@ -190,3 +289,10 @@ class CosineKMeans(IKMeans):
     
     def predict(self, p_X: np.ndarray) -> np.ndarray:
         pass
+
+if __name__ == "__main__":
+    print("Inicio")
+    X: np.ndarray = np.random.randint(200, size=(10,8))
+    print(X, end="\n\nAhora:")
+    a: IKMeans = KMeans(5)
+    a.fit(X)
