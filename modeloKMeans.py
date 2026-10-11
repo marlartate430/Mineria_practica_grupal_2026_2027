@@ -166,9 +166,10 @@ class IKMeans (ABC):
         return self.predict(X)
 
 class KMeans(IKMeans):
-    def __init__(self, p_cluster_number: int):
+    def __init__(self, p_cluster_number: int, p_tol: float = 0.0):
         self.cluster_number: int = p_cluster_number
         self.centroids: np.ndarray = None
+        self.tol: float = p_tol
 
     def fit(self, p_X: np.ndarray, p_threshold: float = 0.0) -> None:
         """
@@ -180,36 +181,60 @@ class KMeans(IKMeans):
         
         # 1. Inicialización aleatoria de centroides (Puedes cambiarlo por K-Means++ luego)
         rng = np.random.default_rng()
-        indices_aleatorios = rng.choice(N_instancias, size=self.n_clusters, replace=False)
+        indices_aleatorios = rng.choice(N_instancias, size=self.cluster_number, replace=False)
         self.centroids = X[indices_aleatorios].copy()
         
-        for i in range(self.max_iter):
-            # --- FASE DE ASIGNACIÓN (Súper optimizada en C) ---
+        stop = False
+
+        while not stop:
             # cdist calcula la distancia de todos los puntos a todos los centroides de golpe
-            distancias = cdist(X, self.centroids, metric=self.metric)
-            
+            distancias = cdist(X, self.centroids, metric=distance.euclidean)
+
             # argmin devuelve el índice del centroide más cercano para cada punto (axis=1)
             etiquetas = np.argmin(distancias, axis=1)
             
-            # --- FASE DE ACTUALIZACIÓN ---
-            nuevos_centroides = np.zeros((self.n_clusters, D_dimensiones))
+            # 1. Calculamos la dispersión (suma de errores) de cada cluster
+            dispersion_por_cluster = np.zeros(self.n_clusters)
             for k in range(self.n_clusters):
+                puntos_k = X[etiquetas == k]
+                if len(puntos_k) > 0:
+                    # Sumamos las distancias de los puntos de este cluster a su centroide
+                    dispersion_por_cluster[k] = np.sum(distancias[etiquetas == k, k])
+
+            # --- FASE DE ACTUALIZACIÓN ---
+            nuevos_centroides = np.zeros((self.cluster_number, D_dimensiones))
+            for k in range(self.cluster_number):
                 # Filtramos los puntos asignados a este cluster 'k' (indexación booleana súper rápida)
                 puntos_del_cluster = X[etiquetas == k]
                 
                 if len(puntos_del_cluster) > 0:
                     nuevos_centroides[k] = puntos_del_cluster.mean(axis=0)
                 else:
-                    # Si un cluster se queda vacío, le asignamos un punto aleatorio para que no colapse
-                    nuevos_centroides[k] = X[rng.choice(N_instancias)]
+                    # ESTRATEGIA SCIKIT-LEARN: Coger el punto con mayor error del dataset
+
+                    # 1. Buscamos el cluster más disperso/caótico
+                    cluster_mas_disperso = np.argmax(dispersion_por_cluster)
+
+                    # 2. Localizamos los puntos que pertenecen a ese cluster
+                    puntos_robables = X[etiquetas == cluster_mas_disperso]
+                    distancias_robables = distancias[etiquetas == cluster_mas_disperso, cluster_mas_disperso]
+
+                    # 3. Le robamos la instancia que más se aleja de su centro
+                    indice_instancia_robada = np.argmax(distancias_robables)
+                    nuevos_centroides[k] = puntos_robables[indice_instancia_robada]
+
+                    # Ponemos su dispersión a 0 por si hay otro cluster vacío, que robe a otro distinto
+                    dispersion_por_cluster[cluster_mas_disperso] = 0
+
+                    indice_peor_punto = np.argmax(errores)
+                    nuevos_centroides[k] = X[indice_peor_punto]
                 
             # --- COMPROBACIÓN DE CONVERGENCIA ---
             desplazamiento = np.linalg.norm(self.centroids - nuevos_centroides)
             self.centroids = nuevos_centroides
             
             if desplazamiento <= self.tol:
-                print(f"[{self.metric.upper()}] Convergencia alcanzada en la iteración {i+1}")
-                break
+                stop = True
     
     def predict(self, p_X: np.ndarray) -> np.ndarray:
         if not self.centroids is None:
