@@ -1,16 +1,10 @@
 import numpy as np
 from typing import Tuple
 from scipy.spatial.distance import cdist
+from metrics import DistanceMetric, CosineMetric, EuclideanMetric
 
 class KMeans:
-
-    real_distance_metrics = {
-            "euclidean" : "sqeuclidean", # sqeuclidean(v1, v2) = dot(v1-v2, v1-v2)
-            "cosine" : "cosine",
-            "sqeuclidean": "sqeuclidean"
-            }
-
-    def __init__(self, p_cluster_number: int, p_init: str = "kmeans++", p_distance: str = "euclidean", p_tol: float = 0.0):
+    def __init__(self, p_cluster_number: int, p_init: str = "kmeans++", p_metric: DistanceMetric, p_tol: float = 0.0):
         if p_cluster_number <= 0:
             raise ValueError(
                 "El número de clusters k debe ser mayor que 0."
@@ -20,14 +14,10 @@ class KMeans:
 
         self.centroids: np.ndarray = None
         self.tol: float = p_tol
-        self.init: str = p_init # Pendiente de mezclar. Opciones: "kmeans++", "random"
+        self.init: str = p_init 
+        self.metric: MetricaDistance = p_metric
 
-        if p_distance in KMeans.real_distance_metrics:
-            self.distance: str = KMeans.real_distance_metrics[p_distance]
-        else:
-            raise ValueError(f"{p_distance} cannot be used in this class")
-
-    def fit(self, p_X: np.ndarray, p_threshold: float = 0.0, p_seed: int | None = None) -> None:
+    def fit(self, p_X: np.ndarray, p_seed: int | None = None) -> None:
         N_instancias, D_dimensiones = p_X.shape
         
         if self.cluster_number > N_instancias:
@@ -36,12 +26,9 @@ class KMeans:
                 "que el número de muestras."
             )
 
-        X: np.ndarray = None
+        X: np.ndarray = self.metric.format_data(p_X)
 
-        if self.distance == "cosine":
-            X = p_X / (np.linalg.norm(p_X, axis=1, keepdims=True) + 1e-10)
-        else:
-            X = p_X.copy()
+        # Hacer una clase que gestione las limpiezas internas y que pase por parámetros
 
         # 1. Inicialización aleatoria de centroides (Puedes cambiarlo por K-Means++ luego)
         if self.init == "kmeans++":
@@ -51,20 +38,15 @@ class KMeans:
 
         stop = False
 
+        current_deviation_manager: Deviation_manager = Deviation_manager(self.cluster_number)
+
         while not stop:
-            # cdist calcula la distancia de todos los puntos a todos los centroides de golpe
-            distancias = cdist(X, self.centroids, metric=self.distance)
+            distancias = self.metric.get_distance(X, self.centroids)
 
             # argmin devuelve el índice del centroide más cercano para cada punto (axis=1)
             etiquetas = np.argmin(distancias, axis=1)
             
-            # 1. Calculamos la dispersión (suma de errores) de cada cluster
-            dispersion_por_cluster = np.zeros(self.cluster_number)
-            for k in range(self.cluster_number):
-                puntos_k = X[etiquetas == k]
-                if len(puntos_k) > 0:
-                    # Sumamos las distancias de los puntos de este cluster a su centroide
-                    dispersion_por_cluster[k] = np.sum(distancias[etiquetas == k, k])
+            current_deviation_manager.update(X, etiquetas, distancias)
 
             # --- FASE DE ACTUALIZACIÓN ---
             nuevos_centroides = np.zeros((self.cluster_number, D_dimensiones))
@@ -76,26 +58,12 @@ class KMeans:
                     nuevos_centroides[k] = puntos_del_cluster.mean(axis=0)
                 else:
                     # ESTRATEGIA SCIKIT-LEARN: Coger el punto con mayor error del dataset
+                    nuevos_centroides[k] = current_deviation_manager.get_most_deviated_instance_in_cluster()
 
-                    # 1. Buscamos el cluster más disperso/caótico
-                    cluster_mas_disperso = np.argmax(dispersion_por_cluster)
+            self.centroids = self.metric.clean_centroids(nuevos_centroides)
 
-                    # 2. Localizamos los puntos que pertenecen a ese cluster
-                    puntos_robables = X[etiquetas == cluster_mas_disperso]
-                    distancias_robables = distancias[etiquetas == cluster_mas_disperso, cluster_mas_disperso]
-
-                    # 3. Le robamos la instancia que más se aleja de su centro
-                    indice_instancia_robada = np.argmax(distancias_robables)
-                    nuevos_centroides[k] = puntos_robables[indice_instancia_robada]
-
-                    # Ponemos su dispersión a 0 por si hay otro cluster vacío, que robe a otro distinto
-                    dispersion_por_cluster[cluster_mas_disperso] = 0
-
-            if self.distance == "cosine":
-                nuevos_centroides = nuevos_centroides / (np.linalg.norm(nuevos_centroides, axis=1, keepdims=True) + 1e-10)
-                
             # --- COMPROBACIÓN DE CONVERGENCIA ---
-            desplazamiento = np.linalg.norm(self.centroids - nuevos_centroides)
+            desplazamiento = np.linalg.norm(self.centroids - nuevos_centroides) # Puedo usar metrics.get_distance()?
             self.centroids = nuevos_centroides
             
             if desplazamiento <= self.tol:
@@ -109,15 +77,8 @@ class KMeans:
         elif self.centroids.shape[1] != p_X.shape[1]:
             raise ValueError("The centroids and the observation matrix do not have the same attributes number.")
         else:
-
-            X: np.ndarray = None
-
-            if self.distance == "cosine":
-                X = p_X / (np.linalg.norm(p_X, axis=1, keepdims=True) + 1e-10)
-            else:
-                X = p_X.copy()
-
-            distances: np.ndarray = cdist(X, self.centroids, metrics=self.distance)
+            X: np.ndarray = self.metric.format_data(p_X)
+            distances: np.ndarray = self.metric.get_distance(X, self.centroids)
             result = np.argmin(distances, axis=1)
 
         return result
@@ -171,7 +132,7 @@ class KMeans:
         #    seleccionado
         # ---------------------------------------------------------
 
-        distancias_minimas = cdist(p_X, centroides[0:1], metric=self.distance).flatten()
+        distancias_minimas = self.metric.get_distance(p_X, centroides[0:1]).flatten()
 
         # ---------------------------------------------------------
         # 3. Seleccionar el resto de centroides
@@ -207,7 +168,7 @@ class KMeans:
             # 4. Actualizar la distancia mínima de cada punto
             # -----------------------------------------------------
 
-            nuevas_distancias = cdist(p_X, centroides[i:i+1], metric=self.distance).flatten()
+            nuevas_distancias = self.metric.get_distance(p_X, centroides[i:i+1]).flatten()
 
             distancias_minimas = np.minimum(
                 distancias_minimas,
@@ -226,6 +187,14 @@ class KMeans:
 
         indices_aleatorios = rng.choice(p_X.shape[0], size=self.cluster_number, replace=False)
         self.centroids = p_X[indices_aleatorios].copy()
+
+class EuclideanKmeans(KMeans):
+    def __init__(self, p_cluster_number: int, p_init: str, p_tol: float = 0.0):
+        super().__init__(p_cluster_number, p_init, EuclideanMetric(), p_tol)
+
+class SphericalKMeans(KMeans):
+    def __init__(self, p_cluster_number: int, p_init: str, p_tol: float = 0.0):
+        super().__init__(p_cluster_number, p_init, CosineMetric(), p_tol)
 
 if __name__ == "__main__":
     print("Inicio")
