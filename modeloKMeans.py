@@ -4,18 +4,40 @@ from scipy.spatial.distance import cdist
 from metrics import DistanceMetric, CosineMetric, EuclideanMetric
 
 class KMeans:
-    def __init__(self, p_cluster_number: int, p_init: str = "kmeans++", p_metric: DistanceMetric, p_tol: float = 0.0):
+    def __init__(self, p_cluster_number: int, p_metric: DistanceMetric, p_init: str = "kmeans++", p_tol: float = 0.0, p_oversampling_factor: int | None = None, p_rounds: int | None = None):
         if p_cluster_number <= 0:
             raise ValueError(
                 "El número de clusters k debe ser mayor que 0."
             )
-        else:
-            self.cluster_number: int = p_cluster_number
 
-        self.centroids: np.ndarray = None
+        if p_init not in ("random", "kmeans++", "kmeans||"):
+            raise ValueError(
+                "Inicialización no válida."
+            )
+
+        if p_tol < 0:
+            raise ValueError(
+                "La tolerancia no puede ser negativa."
+            )
+
+        if p_oversampling_factor is not None and p_oversampling_factor <= 0:
+            raise ValueError(
+                "El factor de sobremuestreo debe ser positivo."
+            )
+
+        if p_rounds is not None and p_rounds <= 0:
+            raise ValueError(
+                "El número de rondas debe ser positivo."
+            )
+
+        self.cluster_number: int = p_cluster_number
+        self.centroids: np.ndarray | None = None
         self.tol: float = p_tol
-        self.init: str = p_init 
-        self.metric: MetricaDistance = p_metric
+        self.init: str = p_init
+        self.metric: DistanceMetric = p_metric
+
+        self.oversampling_factor = p_oversampling_factor
+        self.rounds = p_rounds
 
     def fit(self, p_X: np.ndarray, p_seed: int | None = None) -> None:
         N_instancias, D_dimensiones = p_X.shape
@@ -30,9 +52,19 @@ class KMeans:
 
         # Hacer una clase que gestione las limpiezas internas y que pase por parámetros
 
-        # 1. Inicialización aleatoria de centroides (Puedes cambiarlo por K-Means++ luego)
+        # 1. Inicialización aleatoria de centroides
         if self.init == "kmeans++":
             self._kmeans_plus_plus(X, p_seed)
+
+        elif self.init == "kmeans||":
+
+            if not isinstance(self.metric, EuclideanMetric):
+                raise ValueError(
+                    "K-Means|| clásico requiere EuclideanMetric."
+                )
+
+            self._kmeans_parallel(X, p_seed)
+
         elif self.init == "random":
             self._random_cluster_selection(X, p_seed)
 
@@ -176,6 +208,263 @@ class KMeans:
             )
 
         self.centroids = centroides
+    def _kmeans_parallel(self, p_X: np.ndarray, p_seed: int | None = None) -> None:
+        """
+        Inicialización de centroides mediante K-Means||.
+
+        1. Selecciona un primer candidato aleatorio.
+        2. Realiza varias rondas de sobremuestreo D².
+        3. Calcula los pesos de los candidatos.
+        4. Reduce los candidatos a k mediante K-Means++
+        ponderado.
+
+        Parámetros
+        ----------
+        p_X : np.ndarray
+            Matriz de datos (n_muestras, n_dimensiones).
+
+        p_seed : int | None
+            Semilla para reproducibilidad.
+        """
+
+        # Generador aleatorio
+        rng = np.random.default_rng(p_seed)
+
+        # Dimensiones del conjunto de datos
+        n_muestras, n_dimensiones = p_X.shape
+
+        # Factor de sobremuestreo
+        l = (
+            self.oversampling_factor
+            if self.oversampling_factor is not None
+            else 2 * self.cluster_number
+        )
+
+        # Número de rondas
+        rondas = (
+            self.rounds
+            if self.rounds is not None
+            else max(1, int(np.ceil(np.log(n_muestras))))
+        )
+
+        # --------------------------------------------------
+        # 1. SELECCIONAR EL PRIMER CANDIDATO
+        # --------------------------------------------------
+
+        primer_indice = rng.integers(0, n_muestras)
+
+        indices_candidatos = [int(primer_indice)]
+
+        seleccionados = np.zeros(n_muestras, dtype=bool)
+        seleccionados[primer_indice] = True
+
+        # Distancias euclídeas al cuadrado
+        diferencias = p_X - p_X[primer_indice]
+
+        distancias_minimas = np.sum(
+            diferencias ** 2,
+            axis=1
+        )
+
+        # --------------------------------------------------
+        # 2. RONDAS DE SOBREMUESTREO
+        # --------------------------------------------------
+
+        for _ in range(rondas):
+
+            # Coste total de los candidatos actuales
+            coste_total = np.sum(distancias_minimas)
+
+            if coste_total <= 0:
+                break
+
+            # Probabilidad de seleccionar cada punto
+            probabilidades = np.minimum(
+                1.0,
+                l * distancias_minimas / coste_total
+            )
+
+            # Evitar seleccionar índices repetidos
+            probabilidades[seleccionados] = 0.0
+
+            # Selección independiente de candidatos
+            nuevos_indices = np.flatnonzero(
+                rng.random(n_muestras) < probabilidades
+            )
+
+            if len(nuevos_indices) == 0:
+                continue
+
+            indices_candidatos.extend(
+                nuevos_indices.tolist()
+            )
+
+            seleccionados[nuevos_indices] = True
+
+            # Actualizar la distancia mínima a los candidatos
+            nuevos_candidatos = p_X[nuevos_indices]
+
+            nuevas_distancias = cdist(
+                p_X,
+                nuevos_candidatos,
+                metric="sqeuclidean"
+            )
+
+            distancias_minimas = np.minimum(
+                distancias_minimas,
+                np.min(nuevas_distancias, axis=1)
+            )
+
+        # --------------------------------------------------
+        # 3. OBTENER LOS CANDIDATOS
+        # --------------------------------------------------
+
+        candidatos = p_X[indices_candidatos]
+
+        # Si no tenemos suficientes candidatos, añadimos
+        # puntos distintos para completar al menos k
+        if len(candidatos) < self.cluster_number:
+
+            faltantes = (
+                self.cluster_number - len(candidatos)
+            )
+
+            disponibles = np.flatnonzero(~seleccionados)
+
+            adicionales = rng.choice(
+                disponibles,
+                size=faltantes,
+                replace=False
+            )
+
+            indices_candidatos.extend(
+                adicionales.tolist()
+            )
+
+            candidatos = p_X[indices_candidatos]
+
+        # --------------------------------------------------
+        # 4. CALCULAR LOS PESOS
+        # --------------------------------------------------
+
+        # Distancia de cada muestra a cada candidato
+        distancias = cdist(
+            p_X,
+            candidatos,
+            metric="sqeuclidean"
+        )
+
+        # Candidato más cercano a cada muestra
+        asignaciones = np.argmin(
+            distancias,
+            axis=1
+        )
+
+        # Peso = número de muestras asignadas
+        pesos = np.bincount(
+            asignaciones,
+            minlength=len(candidatos)
+        ).astype(float)
+
+        # --------------------------------------------------
+        # 5. REDUCIR LOS CANDIDATOS A k CENTROIDES
+        # --------------------------------------------------
+
+        centroides = self._weighted_kmeans_plus_plus(
+            candidatos,
+            pesos,
+            rng
+        )
+
+        self.centroids = centroides
+
+    def _weighted_kmeans_plus_plus(self, p_candidatos: np.ndarray, p_pesos: np.ndarray, p_rng: np.random.Generator) -> np.ndarray:
+        """
+        Selecciona k centroides mediante K-Means++
+        ponderado por los pesos de los candidatos.
+        """
+
+        n_candidatos, n_dimensiones = p_candidatos.shape
+
+        centroides = np.empty(
+            (self.cluster_number, n_dimensiones),
+            dtype=float
+        )
+
+        seleccionados = np.zeros(
+            n_candidatos,
+            dtype=bool
+        )
+
+        # --------------------------------------------------
+        # 1. PRIMER CENTROIDE
+        # --------------------------------------------------
+
+        probabilidades = p_pesos / np.sum(p_pesos)
+
+        primer_indice = p_rng.choice(
+            n_candidatos,
+            p=probabilidades
+        )
+
+        centroides[0] = p_candidatos[primer_indice]
+        seleccionados[primer_indice] = True
+
+        # Distancias euclídeas al cuadrado
+        distancias_minimas = cdist(
+            p_candidatos,
+            centroides[0:1],
+            metric="sqeuclidean"
+        ).flatten()
+
+        # --------------------------------------------------
+        # 2. SELECCIONAR LOS RESTANTES CENTROIDES
+        # --------------------------------------------------
+
+        for i in range(1, self.cluster_number):
+
+            # Coste ponderado
+            costes = p_pesos * distancias_minimas
+
+            costes[seleccionados] = 0.0
+
+            coste_total = np.sum(costes)
+
+            if coste_total <= 0:
+
+                # Si todos los costes son cero,
+                # seleccionar un candidato no utilizado
+                disponibles = np.flatnonzero(
+                    ~seleccionados
+                )
+
+                indice = p_rng.choice(disponibles)
+
+            else:
+
+                probabilidades = costes / coste_total
+
+                indice = p_rng.choice(
+                    n_candidatos,
+                    p=probabilidades
+                )
+
+            centroides[i] = p_candidatos[indice]
+            seleccionados[indice] = True
+
+            # Actualizar distancias mínimas
+            nuevas_distancias = cdist(
+                p_candidatos,
+                centroides[i:i+1],
+                metric="sqeuclidean"
+            ).flatten()
+
+            distancias_minimas = np.minimum(
+                distancias_minimas,
+                nuevas_distancias
+            )
+
+        return centroides
 
     def _random_cluster_selection(self, p_X: np.ndarray, p_seed: int | None = None):
         rng = None
