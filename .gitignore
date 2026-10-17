@@ -8,3 +8,4 @@ dataset/
 *.swp
 representaciones/
 informe/
+.ipynb_checkpoints/
