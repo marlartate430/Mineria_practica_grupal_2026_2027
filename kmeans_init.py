@@ -1,6 +1,6 @@
 import numpy as np
 from typing import Callable
-from metric import DistanceMetric, EuclideanMetric
+from metrics import DistanceMetric, EuclideanMetric
 
 InitSignature = Callable[[np.ndarray, int, DistanceMetric, int | None], np.ndarray]
 
