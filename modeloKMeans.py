@@ -2,10 +2,13 @@ import numpy as np
 from typing import Tuple
 from metrics import DistanceMetric, CosineMetric, EuclideanMetric
 from abc import ABC
-from kmeans_init import InitSignature
+from kmeans_init import InitSignature, kmeans_plus_plus
 
 class KMeans(ABC):
-    def __init__(self, p_cluster_number: int, p_metric: DistanceMetric, p_init: str = "kmeans++", p_tol: float = 0.0, p_oversampling_factor: int | None = None, p_rounds: int | None = None):
+    def __init__(self, p_cluster_number: int, p_metric: DistanceMetric, p_init: InitSignature = kmeans_plus_plus, p_tol: float = 0.0, p_oversampling_factor: int | None = None, p_rounds: int | None = None, p_centroids: np.ndarray = None):
+        """
+        pre: Si p_centroids no es None, se da por hecho que se va a instanciar un modelo que ha sido cargado.
+        """
         if p_cluster_number <= 0:
             raise ValueError(
                 "El número de clusters k debe ser mayor que 0."
@@ -22,9 +25,9 @@ class KMeans(ABC):
             )
 
         self.cluster_number: int = p_cluster_number
-        self.centroids: np.ndarray | None = None
+        self.centroids: np.ndarray | None = p_centroids
         self.tol: float = p_tol
-        self.init: str = p_init
+        self.init: InitSignature = p_init
         self.metric: DistanceMetric = p_metric
 
     def fit(self, p_X: np.ndarray, p_seed: int | None = None) -> None:
@@ -102,7 +105,51 @@ class KMeans(ABC):
             result = np.argmin(distances, axis=1)
 
         return result
-    
+
+    def save_model(self, file_path: str) -> None:
+        if self.centroids is None:
+            raise ValueError("El modelo no está entrenado. Llama a 'fit' primero.")
+            
+        estado = {
+            "cluster_number": self.cluster_number,
+            "tol": self.tol,
+            "init": self.init,
+            # JSON no entiende arrays de numpy, hay que convertirlos a listas
+            "centroids": self.centroids.tolist(), 
+            # Guardamos el nombre de la métrica para saber cuál instanciar al cargar
+            "metric_name": self.metric.__class__.__name__ 
+        }
+        
+        with open(file_path, 'w') as f:
+            json.dump(estado, f, indent=4)
+
+    @classmethod
+    def load_model(cls, file_path: str):
+        with open(file_path, 'r') as f:
+            estado = json.load(f)
+            
+        # Reconstruir la métrica adecuada
+        if estado["metric_name"] == "EuclideanMetric":
+            metric = EuclideanMetric
+        elif estado["metric_name"] == "CosineMetric":
+            metric = CosineMetric
+        else:
+            # Fallback genérico o levantar error
+            raise ValueError(f"Métrica {estado['metric_name']} desconocida")
+            
+        # Crear una nueva instancia de KMeans (o la subclase si se llama desde ella)
+        modelo = cls(
+            p_cluster_number=estado["cluster_number"],
+            p_init=estado["init"],
+            p_metric=metric,
+            p_tol=estado["tol"]
+            p_centroids=estado["centroids"]
+        )
+        
+        # Restaurar los centroides como array de numpy
+        modelo.centroids = np.array(estado["centroids"])
+        return modelo
+
 class EuclideanKmeans(KMeans):
     def __init__(self, p_cluster_number: int, p_init: str, p_tol: float = 0.0):
         super().__init__(p_cluster_number, p_init, EuclideanMetric(), p_tol)
