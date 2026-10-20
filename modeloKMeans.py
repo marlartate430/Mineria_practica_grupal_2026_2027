@@ -1,22 +1,20 @@
+import json
+from abc import ABC
 import numpy as np
 from typing import Tuple
+
 from metrics import DistanceMetric, CosineMetric, EuclideanMetric
-from abc import ABC
-from kmeans_init import InitSignature, kmeans_plus_plus
+from kmeans_init import InitSignature, kmeans_plus_plus, random_cluster_selection, str_to_function_name, KMeans_parallel
+from deviation_manager import Deviation_manager
 
 class KMeans(ABC):
-    def __init__(self, p_cluster_number: int, p_metric: DistanceMetric, p_init: InitSignature = kmeans_plus_plus, p_tol: float = 0.0, p_oversampling_factor: int | None = None, p_rounds: int | None = None, p_centroids: np.ndarray = None):
+    def __init__(self, p_cluster_number: int, p_metric: DistanceMetric, p_init: InitSignature = kmeans_plus_plus, p_tol: float = 0.0, p_centroids: np.ndarray = None):
         """
         pre: Si p_centroids no es None, se da por hecho que se va a instanciar un modelo que ha sido cargado.
         """
         if p_cluster_number <= 0:
             raise ValueError(
                 "El número de clusters k debe ser mayor que 0."
-            )
-
-        if p_init not in ("random", "kmeans++", "kmeans||"):
-            raise ValueError(
-                "Inicialización no válida."
             )
 
         if p_tol < 0:
@@ -29,6 +27,8 @@ class KMeans(ABC):
         self.tol: float = p_tol
         self.init: InitSignature = p_init
         self.metric: DistanceMetric = p_metric
+
+        self.inertia_: float | None = None # Se inicializa vacío
 
     def fit(self, p_X: np.ndarray, p_seed: int | None = None) -> None:
         N_instancias, D_dimensiones = p_X.shape
@@ -43,21 +43,7 @@ class KMeans(ABC):
 
         # Hacer una clase que gestione las limpiezas internas y que pase por parámetros
 
-        # 1. Inicialización aleatoria de centroides
-        if self.init == "kmeans++":
-            self._kmeans_plus_plus(X, p_seed)
-
-        elif self.init == "kmeans||":
-
-            if not isinstance(self.metric, EuclideanMetric):
-                raise ValueError(
-                    "K-Means|| clásico requiere EuclideanMetric."
-                )
-
-            self._kmeans_parallel(X, p_seed)
-
-        elif self.init == "random":
-            self._random_cluster_selection(X, p_seed)
+        self.centroids = self.init(p_X, self.cluster_number, self.metric, p_seed)
 
         stop = False
 
@@ -83,14 +69,21 @@ class KMeans(ABC):
                     # ESTRATEGIA SCIKIT-LEARN: Coger el punto con mayor error del dataset
                     nuevos_centroides[k] = current_deviation_manager.get_most_deviated_instance_in_cluster()
 
-            self.centroids = self.metric.clean_centroids(nuevos_centroides)
+            nuevos_centroides = self.metric.clean_centroids(nuevos_centroides)
 
             # --- COMPROBACIÓN DE CONVERGENCIA ---
-            desplazamiento = np.linalg.norm(self.centroids - nuevos_centroides) # Puedo usar metrics.get_distance()?
+            distancias_movimiento = self.metric.get_distance(self.centroids, nuevos_centroides)
+            desplazamiento = np.max(np.diag(distancias_movimiento))
+
             self.centroids = nuevos_centroides
             
             if desplazamiento <= self.tol:
                 stop = True
+        
+        # Calculo de la inercia
+        distancias_finales = self.metric.get_distance(X, self.centroids)
+        distancias_minimas = np.min(distancias_finales, axis=1)
+        self.inertia_ = float(np.sum(distancias_minimas))
     
     def predict(self, p_X: np.ndarray) -> np.ndarray:
         result: np.ndarray = None
@@ -106,18 +99,23 @@ class KMeans(ABC):
 
         return result
 
-    def save_model(self, file_path: str) -> None:
+    def save_model(self, file_path: str, p_class_name: str | None = None) -> None:
         if self.centroids is None:
             raise ValueError("El modelo no está entrenado. Llama a 'fit' primero.")
-            
+        
+        class_name: str = self.__class__.__name__
+        
+        if not p_class_name is None:
+            class_name = p_class_name
+
         estado = {
             "cluster_number": self.cluster_number,
             "tol": self.tol,
-            "init": self.init,
+            "init_name": self.init.__name__ if hasattr(self.init, '__name__') else "KMeans_parallel",
             # JSON no entiende arrays de numpy, hay que convertirlos a listas
             "centroids": self.centroids.tolist(), 
             # Guardamos el nombre de la métrica para saber cuál instanciar al cargar
-            "metric_name": self.metric.__class__.__name__ 
+            "class_name": class_name
         }
         
         with open(file_path, 'w') as f:
@@ -128,35 +126,52 @@ class KMeans(ABC):
         with open(file_path, 'r') as f:
             estado = json.load(f)
             
-        # Reconstruir la métrica adecuada
-        if estado["metric_name"] == "EuclideanMetric":
-            metric = EuclideanMetric
-        elif estado["metric_name"] == "CosineMetric":
-            metric = CosineMetric
+        clase = str2KMeansClass(estado["class_name"])
+        init_obj: KMeans_parallel = None
+        func_name: InitSiganture | KMeans_parallel = None
+
+        if estado["init"] == "KMeans_parallel":
+            init_obj = KMeans_parallel(estado["oversampling_factor"], estado["rounds"])
+            func_name = init_obj.initialize
         else:
-            # Fallback genérico o levantar error
-            raise ValueError(f"Métrica {estado['metric_name']} desconocida")
-            
+            func_name = str_to_function_name(estado["init"])
+
         # Crear una nueva instancia de KMeans (o la subclase si se llama desde ella)
-        modelo = cls(
+        modelo = clase(
             p_cluster_number=estado["cluster_number"],
             p_init=estado["init"],
-            p_metric=metric,
-            p_tol=estado["tol"]
-            p_centroids=estado["centroids"]
+            p_tol=estado["tol"],
+            p_centroids=np.array(estado["centroids"])
         )
         
-        # Restaurar los centroides como array de numpy
-        modelo.centroids = np.array(estado["centroids"])
         return modelo
 
-class EuclideanKmeans(KMeans):
-    def __init__(self, p_cluster_number: int, p_init: str, p_tol: float = 0.0):
-        super().__init__(p_cluster_number, p_init, EuclideanMetric(), p_tol)
+class EuclideanKMeans(KMeans):
+    def __init__(self, p_cluster_number: int, p_init: InitSignature, p_tol: float = 0.0, p_centroids: np.ndarray | None = None):
+        super().__init__(p_cluster_number, EuclideanMetric, p_init, p_tol, p_centroids)
+
+    def save_model(self, file_path: str) -> None:
+        super().save_model(file_path, self.__class__.__name__)
 
 class SphericalKMeans(KMeans):
-    def __init__(self, p_cluster_number: int, p_init: str, p_tol: float = 0.0):
-        super().__init__(p_cluster_number, p_init, CosineMetric(), p_tol)
+    def __init__(self, p_cluster_number: int, p_init: InitSignature, p_tol: float = 0.0, p_centroids: np.ndarray | None = None):
+        super().__init__(p_cluster_number, CosineMetric, p_init, p_tol, p_centroids)
+
+    def save_model(self, file_path: str) -> None:
+        super().save_model(file_path, self.__class__.__name__)
+
+def str2KMeansClass(p_name: str):
+    result = None
+    # Reconstruir la clase adecuada
+    if p_name == "EuclideanKMeans":
+        result = EuclideanKMeans
+    elif p_name == "SphericalKMeans":
+        result = SphericalKMeans
+    else:
+        # Fallback genérico o levantar error
+        raise ValueError(f"Class {p_name} desconocida")
+
+    return result
 
 if __name__ == "__main__":
     print("Inicio")
