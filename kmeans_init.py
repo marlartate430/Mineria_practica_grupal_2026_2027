@@ -379,3 +379,14 @@ class KMeans_parallel:
             )
 
         return centroides
+
+def str_to_function_name(p_name: str) -> InitSignature | KMeans_parallel:
+    result = None
+    if p_name == "random_cluster_selection":
+        result = random_cluster_selection
+    elif p_name == "kmeans_plus_plus":
+        result = kmeans_plus_plus
+    elif p_name == "initialize":
+        result = KMeans_parallel
+
+    return result
