@@ -248,3 +248,56 @@ def evaluar_clustering(
     print("=" * 50)
 
     return resultados
+
+
+# ======================================================
+# MÉTRICAS EXTERNAS: comparan los clústeres con las
+# etiquetas reales (los sentidos de cada abreviatura).
+# Hechas a mano con numpy.
+# ======================================================
+
+def tabla_contingencia(y, etiquetas):
+    """n[i, j] = nº de instancias de la clase real i que el K-Means ha metido en el clúster j."""
+    _, yi = np.unique(y, return_inverse=True)
+    _, ci = np.unique(etiquetas, return_inverse=True)
+    n = np.zeros((yi.max() + 1, ci.max() + 1))
+    np.add.at(n, (yi, ci), 1)
+    return n
+
+
+def ari(y, etiquetas):
+    """Adjusted Rand Index: parejas de instancias en las que coinciden clases y clústeres, corregido por azar."""
+    n = tabla_contingencia(y, etiquetas)
+    parejas = lambda x: x * (x - 1) / 2
+    indice = parejas(n).sum()
+    a, b = parejas(n.sum(axis=1)).sum(), parejas(n.sum(axis=0)).sum()
+    esperado = a * b / parejas(n.sum())
+    maximo = (a + b) / 2
+    return 1.0 if maximo == esperado else float((indice - esperado) / (maximo - esperado))
+
+
+def entropia(cuentas):
+    p = cuentas[cuentas > 0] / cuentas.sum()
+    return -np.sum(p * np.log(p))
+
+
+def nmi(y, etiquetas):
+    """Normalized Mutual Information: información que comparten clases y clústeres, entre la media de entropías."""
+    n = tabla_contingencia(y, etiquetas)
+    p = n / n.sum()
+    pi, pj = p.sum(axis=1, keepdims=True), p.sum(axis=0, keepdims=True)
+    nz = p > 0
+    info_mutua = np.sum(p[nz] * np.log(p[nz] / (pi @ pj)[nz]))
+    media = (entropia(n.sum(axis=1)) + entropia(n.sum(axis=0))) / 2
+    return 1.0 if media == 0 else float(info_mutua / media)
+
+
+def pureza(y, etiquetas):
+    """Fracción de instancias que caen en un clúster cuya clase mayoritaria es la suya (1 = sin intrusos)."""
+    n = tabla_contingencia(y, etiquetas)
+    return float(n.max(axis=0).sum() / n.sum())
+
+
+def evaluar_con_etiquetas(y, labels):
+    """Métricas externas de un clustering: 1 = clústeres idénticos a las clases reales."""
+    return {"ARI": ari(y, labels), "NMI": nmi(y, labels), "Pureza": pureza(y, labels)}

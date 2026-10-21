@@ -1,9 +1,9 @@
 """
-Representación vectorial de MeDAL (Medical Abbreviation Disambiguation) y comparativa de técnicas.
+Representación vectorial de MeDAL (Medical Abbreviation Disambiguation).
 
-Tarea: para cada abreviatura ambigua (p. ej. CS, CA, RT) se representan sus contextos y se
-comprueba qué representación separa mejor sus significados (columna LABEL). Cada instancia es
-una ventana de palabras alrededor de la abreviatura dentro de un abstract de PubMed.
+Tarea: para cada abreviatura ambigua (p. ej. CS, CA, RT) se representan sus contextos con varias
+técnicas. Cada instancia es una ventana de palabras alrededor de la abreviatura dentro de un abstract
+de PubMed. Qué representación es la mejor se decide con NUESTRO K-Means: comparativa_kmeans_propio.py
 
 Técnicas:
     Dispersas    : bow, tfidf, lsa (TF-IDF + TruncatedSVD)
@@ -18,10 +18,12 @@ Uso:
     python representacion_vectorial.py --n-filas 50000 --n-abreviaturas 4      # prueba rápida
 
 Resultados en --salida (por defecto 'representaciones/'):
-    instancias.csv, X_<metodo>.npz/.npy, comparativa.csv, comparativa_por_abreviatura.csv,
-    dispersas_dimensionalidad.csv, similitud_pares.csv, polisemia.csv, mapa_2d.png,
+    instancias.csv, X_<metodo>.npz/.npy, lda_temas.csv, dispersas_dimensionalidad.csv, similitud_pares.csv, polisemia.csv, mapa_2d.png,
     word2vec_palabras.png, word2vec_analogias.csv, projector/ (TensorFlow Projector)
 """
+
+# si le meto una frase en otro idioma a ver como se hace la vectorizacion, porque igual nno la enchufa bien
+# el mejor exhaustivo experiemntalemnte
 import argparse
 import csv
 import io
@@ -49,7 +51,7 @@ RUTAS_DATOS = [
     "datasets/full_data.csv.zip",
     os.path.expanduser("~/Escritorio/MeDAL/data/full_data.csv"),
     os.path.expanduser("~/Escritorio/MeDAL/data/full_data.csv.zip"),
-    os.path.expanduser("~/Mineria de Datos/MeDAL/programa.deb"),
+    os.path.expanduser("~/Mineria de Datos/MeDAL/full_data.csv.zip"),
 ]
 
 # La negación cambia el sentido clínico ("no evidence of tumor"): no se elimina
@@ -77,7 +79,6 @@ PALABRAS_CLAVE_W2V = ["cancer", "insulin", "heart", "liver", "infection", "blood
 # a : b :: c : ?   ->   most_similar(positive=[b, c], negative=[a])
 ANALOGIAS = [("kidney", "renal", "liver"), ("heart", "cardiac", "lung"),
              ("children", "pediatric", "elderly")]
-
 
 # ---------------------------------------------------------------------------
 # Lectura de MeDAL
@@ -172,14 +173,15 @@ def construir_instancias(args):
     sentidos = {}
     candidatas = args.abreviaturas or list(conteo)
     for abrev in candidatas:
-        frecuentes = [(e, c) for e, c in conteo[abrev].most_common(args.max_sentidos) if c >= args.min_por_sentido]
+        frecuentes = [(e, c) for e, c in conteo[abrev].most_common(args.max_sentidos or None)
+                      if c >= args.min_por_sentido]
         if len(frecuentes) >= 2:
             sentidos[abrev] = frecuentes
     if args.abreviaturas:
         descartadas = set(args.abreviaturas) - set(sentidos)
         if descartadas:
             print(f"  Sin al menos 2 sentidos con {args.min_por_sentido}+ ejemplos: {sorted(descartadas)}")
-    else:
+    elif args.n_abreviaturas:
         # Las más ambiguas: mayor número de ejemplos en su segundo sentido más frecuente
         elegidas = sorted(sentidos, key=lambda a: -sentidos[a][1][1])[:args.n_abreviaturas]
         sentidos = {a: sentidos[a] for a in elegidas}
@@ -479,39 +481,6 @@ def coseno(a, b):
     return float(a @ b / (na * nb)) if na > 0 and nb > 0 else 0.0
 
 
-def evaluar(X, y, semilla=42):
-    """Métricas de una abreviatura: cuánto separa la representación sus sentidos."""
-    from sklearn.cluster import KMeans
-    from sklearn.linear_model import LogisticRegression
-    from sklearn.metrics import adjusted_rand_score, normalized_mutual_info_score, silhouette_score
-    from sklearn.model_selection import StratifiedKFold, cross_val_score
-
-    y = np.asarray(y)
-    clases, cuentas = np.unique(y, return_counts=True)
-    # Norma 1: la distancia euclídea pasa a ser equivalente a la distancia coseno
-    Xn = normalize(X)
-    km = KMeans(n_clusters=len(clases), n_init=10, random_state=semilla).fit(Xn)
-    S = Xn @ Xn.T
-    S = S.toarray() if sparse.issparse(S) else S
-    mismo = y[:, None] == y[None, :]
-    np.fill_diagonal(mismo, False)
-    distinto = y[:, None] != y[None, :]
-    resultado = {
-        "ARI": adjusted_rand_score(y, km.labels_),
-        "NMI": normalized_mutual_info_score(y, km.labels_),
-        "silueta": silhouette_score(Xn, y, metric="cosine", random_state=semilla),
-        "sim_intra": S[mismo].mean(),
-        "sim_inter": S[distinto].mean(),
-    }
-    resultado["separacion"] = resultado["sim_intra"] - resultado["sim_inter"]
-    folds = min(5, cuentas.min())
-    if folds >= 2:
-        cv = StratifiedKFold(n_splits=folds, shuffle=True, random_state=semilla)
-        resultado["f1_sonda"] = cross_val_score(LogisticRegression(max_iter=2000), Xn, y, cv=cv,
-                                                scoring="f1_macro").mean()
-    return resultado
-
-
 def similitud_pares(representaciones):
     filas = []
     for etiqueta, f1, f2 in PARES_FRASES:
@@ -646,21 +615,19 @@ def guardar_matriz(X, ruta_base):
 # ---------------------------------------------------------------------------
 
 def main():
-    parser = argparse.ArgumentParser(description="Representación vectorial de MeDAL y comparativa de técnicas")
+    parser = argparse.ArgumentParser(description="Representación vectorial de MeDAL")
     parser.add_argument("--datos", default=None, help="full_data.csv, .zip (aunque esté incompleto) o train.csv")
     parser.add_argument("--metodos", nargs="+", default=TODOS_METODOS, choices=TODOS_METODOS)
     parser.add_argument("--n-filas", type=int, default=300_000, help="Filas de MeDAL que se recorren")
     parser.add_argument("--abreviaturas", nargs="+", default=None, help="Abreviaturas concretas (p. ej. CS CA RT)")
-    parser.add_argument("--n-abreviaturas", type=int, default=8)
-    parser.add_argument("--max-sentidos", type=int, default=4, help="Sentidos más frecuentes por abreviatura")
+    parser.add_argument("--n-abreviaturas", type=int, default=8, help="0 = todas las que cumplan los requisitos")
+    parser.add_argument("--max-sentidos", type=int, default=4, help="Sentidos más frecuentes por abreviatura (0 = todos)")
     parser.add_argument("--min-por-sentido", type=int, default=50)
     parser.add_argument("--max-por-sentido", type=int, default=150)
     parser.add_argument("--ventana", type=int, default=25, help="Palabras a cada lado de la abreviatura")
     parser.add_argument("--min-df", type=int, default=2)
     parser.add_argument("--n-lsa", type=int, default=300)
     parser.add_argument("--n-temas", type=int, default=20)
-    parser.add_argument("--n-pca", type=int, default=50,
-                        help="Dimensiones de las variantes '+pca' de los transformers (0 = no calcularlas)")
     parser.add_argument("--n-textos-w2v", type=int, default=100_000, help="Abstracts para entrenar word2vec/doc2vec")
     parser.add_argument("--w2v-preentrenado", default=None, help="Fichero .vec/.bin (p. ej. BioWordVec)")
     parser.add_argument("--modelo-st", default="sentence-transformers/all-MiniLM-L6-v2")
@@ -686,7 +653,10 @@ def main():
     print(f"{len(df)} instancias de {df['abreviatura'].nunique()} abreviaturas "
           f"({time.time() - inicio:.0f} s)")
     resumen = df.groupby(["abreviatura", "sentido"]).size().rename("n").reset_index()
-    print(resumen.to_string(index=False), "\n")
+    if len(resumen) <= 100:
+        print(resumen.to_string(index=False), "\n")
+    else:
+        print(f"{len(resumen)} sentidos; la lista completa está en {args.salida}/instancias.csv\n")
     df.to_csv(f"{args.salida}/instancias.csv", index=False)
 
     # Las abreviaturas elegidas aparecen en todas sus ventanas: no aportan para separar sentidos y
@@ -695,7 +665,7 @@ def main():
     STOPWORDS = sorted(set(STOPWORDS) | {a.lower() for a in df["abreviatura"].unique()})
 
     # 2. Representaciones
-    representaciones, matrices, info = {}, {}, {}
+    representaciones, matrices = {}, {}
     for metodo in args.metodos:
         print(f"[{metodo}] calculando...")
         inicio = time.time()
@@ -715,7 +685,6 @@ def main():
         segundos = round(time.time() - inicio, 1)
         for nombre, X in resultado.items():
             matrices[nombre] = X
-            info[nombre] = {"tipo": rep.tipo, "tiempo_s": segundos}
             print(f"  {nombre}: forma {X.shape} en {segundos} s")
     if not matrices:
         raise SystemExit("No se ha podido calcular ninguna representación")
@@ -729,49 +698,20 @@ def main():
 
     # 3. Limitaciones de las dispersas: dimensionalidad
     if {"bow", "tfidf", "lsa"} & set(representaciones):
-        dims = analizar_dimensionalidad(textos, args.min_df)
+        # Con muchas instancias, los trigramas con min_df=1 no caben en memoria: se analiza una muestra
+        muestra = textos if len(textos) <= 20_000 else random.Random(args.semilla).sample(textos, 20_000)
+        dims = analizar_dimensionalidad(muestra, args.min_df)
         dims.to_csv(f"{args.salida}/dispersas_dimensionalidad.csv", index=False)
         print("\nDimensionalidad de TF-IDF según n-gramas:")
         print(dims.to_string(index=False))
 
-    # 4. Comparativa: métricas por abreviatura y media.
-    # Los vectores de los transformers son anisótropos (todos apuntan en una dirección parecida y el
-    # coseno entre cualquier par es alto). Centrarlos y reducirlos con PCA dentro de cada abreviatura
-    # elimina esa componente común: variantes '<metodo>+pca'.
-    variantes = {nombre: nombre for nombre in matrices}
-    for nombre in ("bert_abrev", "bert_media", "st"):
-        if nombre in matrices and args.n_pca:
-            variantes[f"{nombre}+pca"] = nombre
-            info[f"{nombre}+pca"] = {**info[nombre], "tipo": info[nombre]["tipo"] + " + centrado/PCA"}
-    filas = []
-    for nombre, origen in variantes.items():
-        for abrev, grupo in df.groupby("abreviatura"):
-            idx = grupo.index.to_numpy()
-            X = matrices[origen][idx]
-            if nombre != origen:
-                X = PCA(n_components=min(args.n_pca, *X.shape), random_state=args.semilla).fit_transform(X)
-            filas.append({"metodo": nombre, "abreviatura": abrev, "n_sentidos": grupo["sentido"].nunique(),
-                          **evaluar(X, grupo["sentido"].values, args.semilla)})
-    por_abrev = pd.DataFrame(filas)
-    por_abrev.round(4).to_csv(f"{args.salida}/comparativa_por_abreviatura.csv", index=False)
-    metricas = [c for c in ["ARI", "NMI", "silueta", "separacion", "f1_sonda"] if c in por_abrev]
-    comparativa = por_abrev.groupby("metodo", sort=False)[metricas].mean().round(4)
-    comparativa.insert(0, "dims", [args.n_pca if m.endswith("+pca") else matrices[m].shape[1]
-                                   for m in comparativa.index])
-    comparativa.insert(0, "tiempo_s", [info[m]["tiempo_s"] for m in comparativa.index])
-    comparativa.insert(0, "tipo", [info[m]["tipo"] for m in comparativa.index])
-    comparativa = comparativa.sort_values("ARI", ascending=False)
-    comparativa.to_csv(f"{args.salida}/comparativa.csv")
-    print("\nComparativa (media sobre abreviaturas; ARI/NMI de K-Means con k = nº de sentidos):")
-    print(comparativa.to_string())
-
-    # 5. Similitud entre pares de frases
+    # 4. Similitud entre pares de frases
     pares = similitud_pares(representaciones)
     pares.to_csv(f"{args.salida}/similitud_pares.csv", index=False)
     print("\nSimilitud coseno entre pares de frases:")
     print(pares.drop(columns=["frase_1", "frase_2"]).to_string(index=False))
 
-    # 6. Estático vs. contextual: 'MS' en contextos distintos
+    # 5. Estático vs. contextual: 'MS' en contextos distintos
     if "bert" in representaciones:
         polisemia = demo_polisemia(representaciones["bert"], representaciones.get("w2v"))
         polisemia.to_csv(f"{args.salida}/polisemia.csv", index=False)
@@ -780,7 +720,7 @@ def main():
             par=[f"{a[:28]}... / {b[:28]}..." for a, b in zip(polisemia["frase_a"], polisemia["frase_b"])]
         ).to_string(index=False))
 
-    # 7. word2vec: vecinos, analogías y exportación para TensorFlow Projector
+    # 6. word2vec: vecinos, analogías y exportación para TensorFlow Projector
     if "w2v" in representaciones:
         w2v = representaciones["w2v"]
         vecinos = dibujar_word2vec(w2v, f"{args.salida}/word2vec_palabras.png")
@@ -795,7 +735,7 @@ def main():
         palabras = w2v.kv.index_to_key[:5000]
         exportar_projector(f"{args.salida}/projector/word2vec", w2v.kv[palabras], [[p] for p in palabras])
 
-    # 8. Mapas 2D de una abreviatura, coloreados por sentido
+    # 7. Mapas 2D de una abreviatura, coloreados por sentido
     abrev_mapa = args.abrev_mapa if args.abrev_mapa in set(df["abreviatura"]) else \
         df["abreviatura"].value_counts().index[0]
     idx = df.index[df["abreviatura"] == abrev_mapa].to_numpy()
