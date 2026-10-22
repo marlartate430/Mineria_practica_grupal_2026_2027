@@ -1,6 +1,7 @@
 import numpy as np
 from typing import Callable
 from metrics import DistanceMetric, EuclideanMetric
+from scipy.spatial.distance import cdist
 
 InitSignature = Callable[[np.ndarray, int, DistanceMetric, int | None], np.ndarray]
 

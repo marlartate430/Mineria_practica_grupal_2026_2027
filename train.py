@@ -2,6 +2,8 @@ import numpy as np
 import pandas as pd
 from scipy import sparse
 import os
+import argparse
+from kmeans_init import kmeans_plus_plus, random_cluster_selection, KMeans_parallel
 
 from modeloKMeans import SphericalKMeans, EuclideanKMeans
 from kmeans_init import kmeans_plus_plus
@@ -107,13 +109,13 @@ def entrenar_modelo_optimo_multiresolucion(X: np.ndarray, ModelClass, init_func,
     
     return todos_los_modelos[codo_actual]
 
-def main():
+def main(p_instance_path, p_vector_path, p_model, p_init, p_seed = 42):
     # 1. CARGAMOS LOS DATOS (Al estilo de tu compañera)
     print("Cargando dataset...")
-    df = pd.read_csv("representaciones/instancias.csv")
+    df = pd.read_csv(p_instance_path)
     
     # Asume que ya mirasteis los resultados de ella y ganó, por ejemplo, TF-IDF
-    ruta_matriz_ganadora = "representaciones/X_tfidf.npz" 
+    ruta_matriz_ganadora = p_vector_path
     
     if ruta_matriz_ganadora.endswith(".npz"):
         X_global = sparse.load_npz(ruta_matriz_ganadora)
@@ -146,12 +148,12 @@ def main():
         try:
             modelo_final = entrenar_modelo_optimo_multiresolucion(
                 X=X_abrev,
-                ModelClass=SphericalKMeans, # O EuclideanKMeans, según lo que ganara
-                init_func=kmeans_plus_plus,
+                ModelClass=p_model, # O EuclideanKMeans, según lo que ganara
+                init_func=p_init,
                 pasos=[3, 1], 
                 k_min=2,
                 k_max=k_max_logico,
-                p_seed=42
+                p_seed=p_seed
             )
             
             # Guardamos el JSON
@@ -162,4 +164,24 @@ def main():
             print(f"  Error procesando {abrev}: {e}")
 
 if __name__ == "__main__":
-    main()
+    parser = argparse.ArgumentParser(description="Entrenamiento y desambiguación masiva con K-Means")
+    parser.add_argument("--datos", type=str, required=True, help="Ruta a la matriz vectorizada ganadora (ej. representaciones/X_bert_abrev+pca90%.npy)")
+    parser.add_argument("--instancias", type=str, default="representaciones/instancias.csv", help="Ruta al CSV con la metadata")
+    parser.add_argument("--distancia", choices=["cosine", "euclidean"], default="cosine", help="Métrica geométrica a optimizar")
+    parser.add_argument("--init", choices=["random", "plus", "parallel"], default="plus", help="Algoritmo de inicialización de centroides")
+    parser.add_argument("--semilla", type=int, default=42)
+    parser.add_argument("--oversampling", type=int, default=-1)
+    parser.add_argument("--rounds", type=int, default=-1)
+    args = parser.parse_args()
+
+    ModelClass = SphericalKMeans if args.distancia == "cosine" else EuclideanKMeans
+    
+    dict_init = {
+        "plus": kmeans_plus_plus,
+        "random": random_cluster_selection,
+        "parallel": KMeans_parallel(p_oversampling_factor=args.oversampling, p_rounds=args.rounds).initialize
+    }
+
+    init_func_elegida = dict_init[args.init]
+
+    main(args.instancias, args.datos, ModelClass, init_func_elegida, args.semilla)
