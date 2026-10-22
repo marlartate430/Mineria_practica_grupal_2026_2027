@@ -30,7 +30,7 @@ Para usarla en el modelo final (p. ej. desde find_cluster_number de train.py):
     from buscar_k import busqueda_dicotomica, silueta_con_k
     k, _ = busqueda_exponencial_dicotomica(lambda k: silueta_con_k(X, k), 2, 20)
 
-Resultados en <representaciones>/buscar_k_por_abreviatura.csv
+Resultados en <representaciones>/buscar_k_por_abreviatura.csv (incluye los segundos que tarda cada búsqueda)
 """
 
 import argparse
@@ -38,6 +38,7 @@ import contextlib
 import io
 import os
 import re
+import time
 
 import numpy as np
 import pandas as pd
@@ -173,16 +174,32 @@ def main():
             continue
 
         # La exhaustiva calcula la silueta de todas las k; la dicotómica consulta las mismas (mismas semillas),
-        # así que dan exactamente lo mismo que por separado y cada K-Means se entrena una sola vez
-        siluetas, etiquetas = {}, {}
-        evaluar = lambda k: siluetas.setdefault(k, silueta_con_k(X, k, args.metrica, args.init, semillas, etiquetas))
-        k_exh, n_exh = busqueda_exhaustiva(evaluar, 2, k_max)
-        k_dic, n_dic = busqueda_dicotomica(evaluar, 2, k_max)
-        k_exp, n_exp = busqueda_exponencial_dicotomica(evaluar, 2, k_max)
+        # así que dan exactamente lo mismo que por separado y cada K-Means se entrena una sola vez.
+        # Por eso el tiempo de cada búsqueda no se cronometra directamente (las dicotómicas saldrían gratis):
+        # se mide lo que tarda cada k una vez y a cada búsqueda se le suman las k que ha consultado
+        siluetas, etiquetas, segundos = {}, {}, {}
+
+        def evaluar(k):
+            if k not in siluetas:
+                inicio = time.perf_counter()
+                siluetas[k] = silueta_con_k(X, k, args.metrica, args.init, semillas, etiquetas)
+                segundos[k] = time.perf_counter() - inicio
+            return siluetas[k]
+
+        def anotando(consultadas):
+            return lambda k: (consultadas.add(k), evaluar(k))[1]
+
+        ks_exh, ks_dic, ks_exp = set(), set(), set()
+        k_exh, n_exh = busqueda_exhaustiva(anotando(ks_exh), 2, k_max)
+        k_dic, n_dic = busqueda_dicotomica(anotando(ks_dic), 2, k_max)
+        k_exp, n_exp = busqueda_exponencial_dicotomica(anotando(ks_exp), 2, k_max)
         filas.append({"abreviatura": abrev, "n_contextos": len(X), "k_real": k_real,
                       "k_dicotomica": k_dic, "k_exp_dicotomica": k_exp, "k_exhaustiva": k_exh,
                       "evaluaciones_dicotomica": n_dic, "evaluaciones_exp_dicotomica": n_exp,
                       "evaluaciones_exhaustiva": n_exh,
+                      "segundos_dicotomica": sum(segundos[k] for k in ks_dic),
+                      "segundos_exp_dicotomica": sum(segundos[k] for k in ks_exp),
+                      "segundos_exhaustiva": sum(segundos[k] for k in ks_exh),
                       "ARI_dicotomica": ari(sentidos, etiquetas[k_dic]),
                       "ARI_exp_dicotomica": ari(sentidos, etiquetas[k_exp]),
                       "ARI_exhaustiva": ari(sentidos, etiquetas[k_exh]),
@@ -199,6 +216,8 @@ def main():
                  "acierta la k real": (r[f"k_{col}"] == r["k_real"]).mean(),
                  "error medio |k - k real|": (r[f"k_{col}"] - r["k_real"]).abs().mean(),
                  "entrenamientos por abreviatura": r[f"evaluaciones_{col}"].mean(),
+                 "segundos por abreviatura": r[f"segundos_{col}"].mean(),
+                 "segundos en total": r[f"segundos_{col}"].sum(),
                  "ARI medio": r[f"ARI_{col}"].mean()}
         for nombre, col in [("dicotómica", "dicotomica"), ("exponencial + dicotómica", "exp_dicotomica"),
                             ("exhaustiva", "exhaustiva")]})
