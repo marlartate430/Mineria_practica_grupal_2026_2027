@@ -8,6 +8,8 @@ from kmeans_init import kmeans_plus_plus, random_cluster_selection, KMeans_paral
 from modeloKMeans import SphericalKMeans, EuclideanKMeans
 from kmeans_init import kmeans_plus_plus
 
+parallel_dict = {}
+
 def kneedle_codo(k_valores, inercias):
     """Calcula el codo analíticamente usando la geometría de Kneedle."""
     k_valores = np.array(k_valores)
@@ -24,13 +26,22 @@ def kneedle_codo(k_valores, inercias):
     indice_codo = np.argmax(diferencias)
     return k_valores[indice_codo]
 
-def obtener_modelos_e_inercias(X, k_lista, ModelClass, init_func, semilla=42):
+def obtener_modelos_e_inercias(X, k_lista, ModelClass, init_func, semilla=42, p_rounds=1):
     modelos_entrenados = {}
     inercias = []
-    
+
+    global parallel_dict
+
     for k in k_lista:
         print(f"  Entrenando k={k}...")
-        modelo = ModelClass(p_cluster_number=k, p_init=init_func, p_tol=1e-4)
+
+        if init_func == "parallel":
+            if not k in parallel_dict:
+                parallel_dict[k] = KMeans_parallel(2 * k, p_rounds).initialize
+            
+            modelo = ModelClass(p_cluster_number=k, p_init=parallel_dict[k], p_tol=1e-4)
+        else:
+            modelo = ModelClass(p_cluster_number=k, p_init=init_func, p_tol=1e-4)
         
         modelo.fit(X, p_seed=semilla) 
         
@@ -39,7 +50,7 @@ def obtener_modelos_e_inercias(X, k_lista, ModelClass, init_func, semilla=42):
         
     return modelos_entrenados, inercias
 
-def entrenar_modelo_optimo_multiresolucion(X: np.ndarray, ModelClass, init_func, pasos: list[int], k_min: int = 2, k_max: int = 200, p_seed: int = 42):
+def entrenar_modelo_optimo_multiresolucion(X: np.ndarray, ModelClass, init_func, pasos: list[int], k_min: int = 2, k_max: int = 200, p_seed: int = 42, p_rounds=1):
     """
     Búsqueda dinámica de K: itera sobre una lista de 'pasos' para ir acotando
     la resolución alrededor del codo detectado.
@@ -109,7 +120,7 @@ def entrenar_modelo_optimo_multiresolucion(X: np.ndarray, ModelClass, init_func,
     
     return todos_los_modelos[codo_actual]
 
-def main(p_instance_path, p_vector_path, p_model, p_init, p_seed = 42):
+def main(p_instance_path, p_vector_path, p_model, p_init, p_seed = 42, p_rounds=1):
     # 1. CARGAMOS LOS DATOS (Al estilo de tu compañera)
     print("Cargando dataset...")
     df = pd.read_csv(p_instance_path)
@@ -153,7 +164,8 @@ def main(p_instance_path, p_vector_path, p_model, p_init, p_seed = 42):
                 pasos=[3, 1], 
                 k_min=2,
                 k_max=k_max_logico,
-                p_seed=p_seed
+                p_seed=p_seed,
+                p_rounds=p_rounds
             )
             
             # Guardamos el JSON
@@ -170,8 +182,7 @@ if __name__ == "__main__":
     parser.add_argument("--distancia", choices=["cosine", "euclidean"], default="cosine", help="Métrica geométrica a optimizar")
     parser.add_argument("--init", choices=["random", "plus", "parallel"], default="plus", help="Algoritmo de inicialización de centroides")
     parser.add_argument("--semilla", type=int, default=42)
-    parser.add_argument("--oversampling", type=int, default=-1)
-    parser.add_argument("--rounds", type=int, default=-1)
+    parser.add_argument("--rounds", type=int, default=5)
     args = parser.parse_args()
 
     ModelClass = SphericalKMeans if args.distancia == "cosine" else EuclideanKMeans
@@ -179,9 +190,9 @@ if __name__ == "__main__":
     dict_init = {
         "plus": kmeans_plus_plus,
         "random": random_cluster_selection,
-        "parallel": KMeans_parallel(p_oversampling_factor=args.oversampling, p_rounds=args.rounds).initialize
+        "parallel": "parallel",
     }
 
     init_func_elegida = dict_init[args.init]
 
-    main(args.instancias, args.datos, ModelClass, init_func_elegida, args.semilla)
+    main(args.instancias, args.datos, ModelClass, init_func_elegida, args.semilla, args.rounds)

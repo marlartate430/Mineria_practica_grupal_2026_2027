@@ -137,7 +137,9 @@ class KMeans_parallel:
             Semilla para reproducibilidad.
         """
 
-        if not isinstance(p_metric, EuclideanMetric):
+        print(p_metric.get_name())
+
+        if p_metric.get_name() != "EuclideanMetric":
             raise ValueError(
                 "K-Means|| clásico requiere EuclideanMetric."
             )
@@ -286,6 +288,7 @@ class KMeans_parallel:
         # --------------------------------------------------
 
         centroides = self._weighted_kmeans_plus_plus(
+            p_cluster_number,
             candidatos,
             pesos,
             rng
