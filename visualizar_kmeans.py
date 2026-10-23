@@ -7,9 +7,8 @@ cada vez que se usa. Así se ven los centroides que elige kmeans_plus_plus (kmea
 del bucle de fit(). Antes de agrupar se quita una frase de cada sentido: son las "instancias nuevas", que luego se
 asignan con predict() al centroide más cercano.
 
-La representación es la ganadora de la comparativa (bert_media + PCA al 80 %). Se usa la inicialización
-kmeans++ aunque en la comparativa completa ganó random por muy poco (ARI 0,6082 frente a 0,6077): con random los
-centroides iniciales son solo puntos al azar, y kmeans++ deja ver mejor cómo se eligen. El PCA se ajusta solo con las
+La representación y la configuración son las ganadoras de la comparativa (bert_media + PCA al 80 %, coseno e
+inicialización aleatoria). Con --init kmeans++ se ve, además, cómo elige kmeans++ los centroides uno a uno. El PCA se ajusta solo con las
 frases de entrenamiento y se guarda (media y componentes) para transformar igual las frases nuevas, que es lo
 que tendrá que hacer el modelo final. Los dibujos son una proyección a 2D; el K-Means trabaja con todas las
 dimensiones del PCA, así que algún punto puede parecer más cerca de otro centroide en el dibujo.
@@ -36,7 +35,7 @@ from matplotlib.animation import FuncAnimation, PillowWriter
 import numpy as np
 import pandas as pd
 
-from kmeans_init import kmeans_plus_plus
+from kmeans_init import kmeans_plus_plus, random_cluster_selection
 from metrics import CosineMetric
 from modeloKMeans import KMeans
 
@@ -67,13 +66,17 @@ def ajustar_pca(X, varianza):
     return media, Vt[:n]
 
 
-def entrenar_y_apuntar(X, k, semilla):
-    """Ejecuta el fit() del grupo y devuelve el modelo, los centroides de kmeans++ y los de cada vuelta."""
+INICIALIZACIONES = {"random": random_cluster_selection, "kmeans++": kmeans_plus_plus}
+
+
+def entrenar_y_apuntar(X, k, semilla, init="random"):
+    """Ejecuta el fit() del grupo y devuelve el modelo, los centroides iniciales y los de cada vuelta."""
     metrica = MetricaQueApunta(len(X))
-    km = KMeans(p_cluster_number=k, p_metric=metrica, p_init=kmeans_plus_plus)
+    km = KMeans(p_cluster_number=k, p_metric=metrica, p_init=INICIALIZACIONES[init])
     km.fit(X, semilla)
-    elegidos = [c[0] for c in metrica.apuntes if len(c) == 1]       # kmeans++ elige un centroide cada vez
     vueltas = [c for c in metrica.apuntes if len(c) == k]           # centroides al empezar cada vuelta
+    # kmeans++ elige un centroide cada vez; random los elige todos a la vez (son los de la primera vuelta)
+    elegidos = [c[0] for c in metrica.apuntes if len(c) == 1] if init == "kmeans++" else list(vueltas[0])
     if len(vueltas) > 1 and np.allclose(vueltas[-1], vueltas[-2]):  # la última es el cálculo de la inercia
         vueltas = vueltas[:-1]
     vueltas.append(km.centroids)
@@ -116,9 +119,9 @@ def preparar(args):
 
 
 def resultado_k(datos, k, semilla):
-    """Todo lo que se dibuja para una k: centroides de kmeans++, vueltas, asignaciones y frases nuevas."""
+    """Todo lo que se dibuja para una k: centroides iniciales, vueltas, asignaciones y frases nuevas."""
     X, a_2d = datos["X"], datos["a_2d"]
-    km, elegidos, vueltas = entrenar_y_apuntar(X, k, semilla)
+    km, elegidos, vueltas = entrenar_y_apuntar(X, k, semilla, datos["init"])
     asignaciones = [np.argmin(CosineMetric.get_distance(CosineMetric.format_data(X), C), axis=1) for C in vueltas]
     sentidos = datos["grupo"]["sentido"].to_numpy()
     # Nombre de cada cluster: el sentido mayoritario entre sus frases de entrenamiento
@@ -197,7 +200,8 @@ def figura_resumen(datos, r, k, ruta):
 
     base(ejes[0], "1. Las frases como puntos (aún sin grupos)")
     puntos(ejes[0], P)
-    base(ejes[1], f"2. kmeans++ elige {k} centroides iniciales")
+    base(ejes[1], f"2. kmeans++ elige {k} centroides iniciales" if datos["init"] == "kmeans++"
+         else f"2. Se eligen {k} frases al azar como centroides iniciales")
     puntos(ejes[1], P)
     centroides(ejes[1], r["elegidos_2d"])
     base(ejes[2], "3. Vuelta 1: cada frase va a su centroide más cercano")
@@ -224,7 +228,8 @@ def figura_resumen(datos, r, k, ruta):
     fig.legend(handles=leyenda, loc="lower center", ncol=min(3, len(leyenda)), frameon=False, fontsize=9,
                labelcolor=TEXTO_SUAVE)
     fig.suptitle(f"Nuestro K-Means paso a paso: {datos['abrev']} (bert_media + PCA, {datos['dims']} dims, k = {k}, "
-                 f"coseno, kmeans++)", color=TEXTO, fontsize=13)
+                 f"coseno, {'kmeans++' if datos['init'] == 'kmeans++' else 'inicialización aleatoria'})",
+                 color=TEXTO, fontsize=13)
     fig.tight_layout(rect=(0, 0.06, 1, 0.96))
     fig.savefig(ruta, dpi=120, facecolor=FONDO)
     plt.close(fig)
@@ -235,9 +240,13 @@ def animacion(datos, r, k, ruta):
     P, P_nuevas = datos["a_2d"](datos["X"]), datos["a_2d"](datos["X_nuevas"])
     V, A = r["vueltas_2d"], r["asignaciones"]
     fotogramas = [("Las frases de la abreviatura como puntos", lambda ax: puntos(ax, P))]
-    for i in range(1, k + 1):
-        fotogramas.append((f"kmeans++ elige el centroide {i} de {k}" + (" (lejos de los anteriores)" if i > 1 else " (al azar)"),
-                           lambda ax, i=i: (puntos(ax, P), centroides(ax, r["elegidos_2d"][:i]))))
+    if datos["init"] == "kmeans++":
+        for i in range(1, k + 1):
+            fotogramas.append((f"kmeans++ elige el centroide {i} de {k}" + (" (lejos de los anteriores)" if i > 1 else " (al azar)"),
+                               lambda ax, i=i: (puntos(ax, P), centroides(ax, r["elegidos_2d"][:i]))))
+    else:
+        fotogramas.append((f"Se eligen {k} frases al azar como centroides iniciales",
+                           lambda ax: (puntos(ax, P), centroides(ax, r["elegidos_2d"]))))
     for v in range(len(V) - 1):
         fotogramas.append((f"Vuelta {v + 1}: cada frase va a su centroide más cercano",
                            lambda ax, v=v: (puntos(ax, P, A[v]), centroides(ax, V[v]))))
@@ -306,12 +315,14 @@ def main():
     parser.add_argument("--k", type=int, default=None, help="Por defecto, el nº de sentidos de la abreviatura")
     parser.add_argument("--varianza-pca", type=float, default=0.8)
     parser.add_argument("--semilla", type=int, default=42)
+    parser.add_argument("--init", default="random", choices=list(INICIALIZACIONES),
+                        help="Inicialización del K-Means (por defecto, la ganadora de la comparativa)")
     args = parser.parse_args()
     salida = f"{args.representaciones}/graficos"
     os.makedirs(salida, exist_ok=True)
 
     datos = preparar(args)
-    datos["abrev"] = args.abreviatura
+    datos["abrev"], datos["init"] = args.abreviatura, args.init
     k = args.k or datos["grupo"]["sentido"].nunique()
     resultados = {kk: resultado_k(datos, kk, args.semilla) for kk in sorted({k, *range(2, 7)})}
     nombre = re.sub(r"[^A-Za-z0-9_-]", "_", args.abreviatura)

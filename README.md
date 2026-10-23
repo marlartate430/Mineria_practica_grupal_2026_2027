@@ -11,6 +11,12 @@ Dados los documentos, la edad, el género y el lugar, se ha etiquetado una enfer
     ```bat
     python representacion_vectorial.py --datos <ruta>.zip
     ```
+    Descripción cuantitativa de los datos para el informe (instancias, repetidas, valores perdidos, vocabulario,
+    OOV y rango de los atributos; unos 3 minutos). La guarda en una página con tablas, `representaciones/analisis_datos.html` (se abre con el navegador)
+    y una fila por medida en `analisis_datos.csv`:
+    ```bat
+    python analisis_datos.py
+    ```
 2. Ejecutar `comparativa_kmeans_propio.py`:
     ```bat
     python comparativa_kmeans_propio.py
@@ -75,12 +81,13 @@ aparta el 20 % de los textos de cada sentido como prueba: el modelo se entrena c
 
 # Ver el K-Means paso a paso
 `visualizar_kmeans.py` ejecuta el `fit()` de nuestro K-Means con los textos de una abreviatura y apunta los
-centroides en cada vuelta: cómo los elige kmeans++, cómo cada texto va a su centroide más cercano, cómo se mueven los
+centroides en cada vuelta: cómo se eligen los centroides iniciales (por defecto al azar, como la configuración ganadora), cómo cada texto va a su centroide más cercano, cómo se mueven los
 centroides hasta que se paran y cómo se asigna una frase nueva. Es una demostración del algoritmo (k = nº de sentidos
 y una frase de cada sentido apartada como "nueva"), no el modelo unificado.
 ```bat
 python visualizar_kmeans.py --abreviatura CEA
 python visualizar_kmeans.py --abreviatura CEA --k 3      # con otra k
+python visualizar_kmeans.py --abreviatura CEA --init kmeans++   # para ver cómo elige kmeans++ los centroides
 ```
 Guarda en `representaciones/graficos/`:
 - `proceso_kmeans_<abreviatura>.png`: resumen en 6 viñetas.

@@ -149,11 +149,13 @@ def separar_etiquetas(valores, distancia):
 
 def figura_ari_por_varianza(comparativa, salida):
     """Una línea por representación: ARI sin PCA (100 %) y con el 95, 90 y 80 % de la varianza."""
-    c = comparativa.copy()
+    # Si se probaron varias distancias e inicializaciones, cada punto es la mejor de su variante
+    c = comparativa.sort_values("ARI", ascending=False).drop_duplicates("metodo").copy()
     c[["origen", "porcentaje"]] = [separar_variante(m) for m in c["metodo"]]
     fig, ax = plt.subplots(figsize=(8.5, 5))
     preparar_ejes(fig, ax, "¿Cuánta varianza conservar con el PCA?",
-                  "ARI medio de nuestro K-Means según el % de varianza que se queda el PCA (100 % = sin PCA)")
+                  "ARI medio de nuestro K-Means según el % de varianza que se queda el PCA (100 % = sin PCA); "
+                  "mejor distancia e inicialización")
     orden = c.groupby("origen")["ARI"].max().sort_values(ascending=False).index
     ganador = orden[0]
     posiciones = separar_etiquetas(c[c["porcentaje"] == 80].set_index("origen")["ARI"], 0.017)
@@ -186,6 +188,11 @@ def mejores_variantes(comparativa):
     return c.sort_values("ARI", ascending=False).drop_duplicates("origen")
 
 
+def filas_de(mejores, por_abreviatura):
+    """Las filas por abreviatura de cada mejor variante, con su misma distancia e inicialización."""
+    return por_abreviatura.merge(mejores[["metodo", "metrica", "init"]], on=["metodo", "metrica", "init"])
+
+
 def figura_metricas(mejores, salida):
     """Barras agrupadas con ARI, NMI y pureza de la mejor variante de cada representación."""
     metricas = [("ARI", COLORES[0]), ("NMI", COLORES[6]), ("Pureza", COLORES[3])]
@@ -193,7 +200,7 @@ def figura_metricas(mejores, salida):
     ancho = 0.27
     fig, ax = plt.subplots(figsize=(10, 4.8))
     preparar_ejes(fig, ax, "Comparación de las vectorizaciones con nuestro K-Means",
-                  "Mejor variante de cada representación (coseno, kmeans++, k = nº de sentidos); "
+                  "Mejor variante de cada representación (mejor distancia e inicialización; k = nº de sentidos); "
                   "media sobre las abreviaturas")
     for i, (metrica, color) in enumerate(metricas):
         barras = ax.bar(x + (i - 1) * ancho, mejores[metrica], ancho, color=color, label=metrica)
@@ -210,6 +217,7 @@ def figura_metricas(mejores, salida):
 
 def figura_distribucion(mejores, por_abreviatura, salida):
     """Diagrama de cajas del ARI por abreviatura: además de la media, muestra lo estable que es cada método."""
+    por_abreviatura = filas_de(mejores, por_abreviatura)
     datos = [por_abreviatura.loc[por_abreviatura["metodo"] == m, "ARI"].to_numpy() for m in mejores["metodo"]]
     colores = [COLOR_FAMILIA[FAMILIAS.get(o, "dispersa")] for o in mejores["origen"]]
     fig, ax = plt.subplots(figsize=(10, 4.8))
@@ -232,7 +240,7 @@ def figura_distribucion(mejores, por_abreviatura, salida):
 
 def figura_por_sentidos(mejores, por_abreviatura, salida, max_sentidos=8):
     """ARI medio según el nº de sentidos de la abreviatura (las de más de max_sentidos van juntas)."""
-    p = por_abreviatura[por_abreviatura["metodo"].isin(mejores["metodo"])].copy()
+    p = filas_de(mejores, por_abreviatura)
     p["grupo"] = p["n_sentidos"].clip(upper=max_sentidos)
     tabla = p.groupby(["metodo", "grupo"])["ARI"].mean().unstack()
     cuantas = p[p["metodo"] == mejores["metodo"].iloc[0]].groupby("grupo").size()
