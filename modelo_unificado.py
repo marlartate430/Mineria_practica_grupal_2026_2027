@@ -14,12 +14,14 @@ k de todas las abreviaturas.
 La k de cada abreviatura se elige SIN mirar los sentidos: la que maximiza la silueta, con la búsqueda exponencial +
 dicotómica de buscar_k.py (k entre 2 y --k-max). Para comprobar que funciona con textos nuevos, en cada abreviatura
 se aparta un --test de sus textos (estratificado por sentido): el PCA y el K-Means se ajustan solo con el resto, y
-los apartados se asignan al centroide más cercano con asignar(). Los sentidos solo se usan al final, para medir
+los apartados se asignan al centroide más cercano con asignar(). La calidad se mide con evaluacion.py: índices
+internos (silueta, Calinski-Harabasz, Davies-Bouldin; no usan los sentidos) e índices externos. Los sentidos solo se
+usan al final, para medir
 ARI, NMI y pureza en entrenamiento y en prueba.
 
-Uso (por defecto, la ganadora de la comparativa por abreviatura: bert_media + PCA 80 %, coseno, kmeans++):
+Uso (por defecto, la combinación ganadora de comparativa_kmeans_propio.csv: representación, PCA, métrica e init):
     python modelo_unificado.py
-    python modelo_unificado.py --metodo st --varianza-pca 0.8 --n-abreviaturas 300
+    python modelo_unificado.py --metodo st --varianza-pca 0.8 --metrica coseno --init kmeans++ --n-abreviaturas 300
 
 Resultados en modelos_unificado/:
     modelo_unificado.npz             el modelo (PCA y centroides de cada abreviatura)
@@ -28,8 +30,11 @@ Resultados en modelos_unificado/:
 """
 
 import argparse
+import contextlib
+import io
 import json
 import os
+import re
 import time
 
 import numpy as np
@@ -38,7 +43,7 @@ from scipy import sparse
 
 from buscar_k import busqueda_exponencial_dicotomica, silueta_con_k
 from comparativa_kmeans_propio import INICIALIZACIONES, METRICAS, cargar_matrices, inercia
-from evaluacion import evaluar_con_etiquetas
+from evaluacion import evaluar_clustering, evaluar_con_etiquetas
 from modeloKMeans import KMeans
 
 
@@ -55,7 +60,9 @@ def ajustar_pca(X, varianza):
 
 
 class ModeloUnificado:
-    def __init__(self, metrica="coseno", init="kmeans++", varianza_pca=0.8, k_max=20, semillas=(42, 43, 44)):
+    def __init__(self, metrica="coseno", init="kmeans++", varianza_pca=0.8, k_max=20, semillas=(42, 43, 44),
+                 metodo="bert_media"):
+        self.metodo = metodo  # la representación (matriz X_<metodo>) con la que se entrena
         self.metrica = metrica
         self.init = init
         self.varianza_pca = varianza_pca
@@ -103,7 +110,7 @@ class ModeloUnificado:
 
     def guardar(self, ruta):
         # Un .npz con tres arrays por abreviatura; en float32 para que ocupe la mitad
-        arrays = {"config": np.array(json.dumps({"metrica": self.metrica, "init": self.init,
+        arrays = {"config": np.array(json.dumps({"metodo": self.metodo, "metrica": self.metrica, "init": self.init,
                                                  "varianza_pca": self.varianza_pca, "k_max": self.k_max,
                                                  "semillas": self.semillas}))}
         for i, (abrev, parte) in enumerate(self.partes.items()):
@@ -128,6 +135,45 @@ class ModeloUnificado:
         return modelo
 
 
+INTERNAS = ("silueta", "calinski_harabasz", "davies_bouldin")
+EXTERNAS = ("ARI", "NMI", "Pureza")
+METRICAS_RESUMEN = INTERNAS + EXTERNAS
+
+
+def indices_internos(modelo, abrev, X, etiquetas):
+    """
+    Silueta, Calinski-Harabasz y Davies-Bouldin (evaluar_clustering de evaluacion.py) en el espacio en el que agrupa
+    el K-Means (PCA de la abreviatura y, con coseno, vectores normalizados). NaN si hay menos de 2 clusters.
+    """
+    Z = METRICAS[modelo.metrica].format_data(modelo._transformar(abrev, X))
+    try:
+        # evaluar_clustering imprime un resumen en cada llamada y aquí se llama miles de veces, así que se silencia
+        with contextlib.redirect_stdout(io.StringIO()):
+            r = evaluar_clustering(Z, etiquetas)
+    except ValueError:
+        return {m: np.nan for m in INTERNAS}
+    return {"silueta": r["silhouette_score"], "calinski_harabasz": r["calinski_harabasz_score"],
+            "davies_bouldin": r["davies_bouldin_score"]}
+
+
+def vectores(M, indices):
+    """Filas de una matriz de representaciones (densa .npy o dispersa .npz) como array denso de float64."""
+    X = M[indices]
+    return np.asarray(X.toarray() if sparse.issparse(X) else X, dtype=np.float64)
+
+
+def ganadora(directorio):
+    """(metodo, varianza del PCA o None, metrica, init) de la primera fila de comparativa_kmeans_propio.csv."""
+    ruta = f"{directorio}/comparativa_kmeans_propio.csv"
+    if not os.path.exists(ruta):
+        raise SystemExit(f"No existe '{ruta}': ejecuta antes comparativa_kmeans_propio.py o indica --metodo, "
+                         "--varianza-pca, --metrica e --init")
+    mejor = pd.read_csv(ruta).iloc[0]
+    # 'bert_media+pca80%' -> ('bert_media', 0.8); 'w2v' -> ('w2v', None)
+    metodo, _, porcentaje = re.match(r"([^+]+)(\+pca(\d+)%)?$", mejor["metodo"]).groups()
+    return metodo, int(porcentaje) / 100 if porcentaje else None, mejor["metrica"], mejor["init"]
+
+
 def separar_prueba(grupo, fraccion, rng):
     """Índices de prueba: una fracción de los textos de cada sentido (al menos 1 si el sentido tiene 2 o más)."""
     prueba = []
@@ -140,10 +186,11 @@ def separar_prueba(grupo, fraccion, rng):
 def main():
     parser = argparse.ArgumentParser(description="Modelo unificado: un K-Means por abreviatura en un solo modelo")
     parser.add_argument("--representaciones", default="representaciones")
-    parser.add_argument("--metodo", default="bert_media", help="Matriz X_<metodo> (sin el sufijo +pca)")
-    parser.add_argument("--varianza-pca", type=float, default=0.8, help="0 = sin PCA")
-    parser.add_argument("--metrica", default="coseno", choices=list(METRICAS))
-    parser.add_argument("--init", default="kmeans++", choices=list(INICIALIZACIONES))
+    parser.add_argument("--metodo", default=None,
+                        help="Matriz X_<metodo> (sin el sufijo +pca); por defecto, la ganadora de la comparativa")
+    parser.add_argument("--varianza-pca", type=float, default=None, help="0 = sin PCA")
+    parser.add_argument("--metrica", default=None, choices=list(METRICAS))
+    parser.add_argument("--init", default=None, choices=list(INICIALIZACIONES))
     parser.add_argument("--k-max", type=int, default=20)
     parser.add_argument("--n-semillas", type=int, default=3)
     parser.add_argument("--test", type=float, default=0.2, help="Fracción de textos de prueba por sentido")
@@ -151,6 +198,12 @@ def main():
     parser.add_argument("--semilla", type=int, default=42)
     parser.add_argument("--salida", default="modelos_unificado")
     args = parser.parse_args()
+    # Lo que no se indique se toma de la combinación ganadora de la comparativa por abreviatura
+    if None in (args.metodo, args.varianza_pca, args.metrica, args.init):
+        metodo, varianza, metrica, init = ganadora(args.representaciones)
+        args.metodo = args.metodo or metodo
+        args.varianza_pca = varianza if args.varianza_pca is None else args.varianza_pca
+        args.metrica, args.init = args.metrica or metrica, args.init or init
 
     df = pd.read_csv(f"{args.representaciones}/instancias.csv", usecols=["abreviatura", "sentido"])
     M = cargar_matrices(args.representaciones, [args.metodo])[args.metodo]
@@ -166,13 +219,12 @@ def main():
           f"k entre 2 y {args.k_max}; {args.test:.0%} de prueba", flush=True)
 
     modelo = ModeloUnificado(args.metrica, args.init, args.varianza_pca or None, args.k_max,
-                             [args.semilla + i for i in range(args.n_semillas)])
+                             [args.semilla + i for i in range(args.n_semillas)], args.metodo)
     filas, inicio = [], time.time()
     for n, (abrev, grupo) in enumerate(df.groupby("abreviatura"), 1):
         es_prueba = separar_prueba(grupo, args.test, rng)
         entrena, prueba = grupo[~es_prueba], grupo[es_prueba]
-        X = M[entrena.index.to_numpy()]
-        X = np.asarray(X.toarray() if sparse.issparse(X) else X, dtype=np.float64)
+        X = vectores(M, entrena.index.to_numpy())
         if len(X) < 3:
             continue
         k = modelo.fit_abreviatura(abrev, X)
@@ -181,11 +233,11 @@ def main():
         for nombre, parte in [("entrena", entrena), ("prueba", prueba)]:
             if len(parte) < 2:
                 continue
-            Xp = M[parte.index.to_numpy()]
-            Xp = np.asarray(Xp.toarray() if sparse.issparse(Xp) else Xp, dtype=np.float64)
+            Xp = vectores(M, parte.index.to_numpy())
             etiquetas = modelo.asignar(Xp, parte["abreviatura"].to_numpy())
             fila.update({f"{m}_{nombre}": v for m, v in evaluar_con_etiquetas(parte["sentido"].to_numpy(),
                                                                                  etiquetas).items()})
+            fila.update({f"{m}_{nombre}": v for m, v in indices_internos(modelo, abrev, Xp, etiquetas).items()})
         filas.append(fila)
         if n % 200 == 0:
             print(f"  {n}/{len(abreviaturas)} abreviaturas ({time.time() - inicio:.0f} s)", flush=True)
@@ -201,7 +253,7 @@ def main():
                "acierta_k_real": float((r["k"] == r["k_real"]).mean()),
                "error_medio_k": float((r["k"] - r["k_real"]).abs().mean()),
                "segundos": round(time.time() - inicio, 1),
-               **{c: float(r[c].mean()) for c in r.columns if c.split("_")[0] in ("ARI", "NMI", "Pureza")}}
+               **{c: float(r[c].mean()) for c in r.columns if c.rsplit("_", 1)[0] in METRICAS_RESUMEN}}
     with open(f"{args.salida}/modelo_unificado_resumen.json", "w") as f:
         json.dump(resumen, f, indent=4, ensure_ascii=False)
 
@@ -209,7 +261,9 @@ def main():
           f"en total ({resumen['n_sentidos_total']} sentidos reales); {resumen['segundos']:.0f} s")
     print(f"k elegida = k real en el {resumen['acierta_k_real']:.0%} de las abreviaturas "
           f"(error medio {resumen['error_medio_k']:.2f})")
-    print(r[[c for c in r.columns if c.split("_")[0] in ("ARI", "NMI", "Pureza")]].mean().round(3).to_string())
+    for tipo, metricas in [("Índices internos (no usan los sentidos)", INTERNAS), ("Índices externos", EXTERNAS)]:
+        print(f"\n{tipo}:")
+        print(r[[c for c in r.columns if c.rsplit("_", 1)[0] in metricas]].mean().round(3).to_string())
     print(f"Resultados en '{args.salida}/'")
 
 

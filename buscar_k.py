@@ -124,10 +124,12 @@ def busqueda_exhaustiva(evaluar, k_min, k_max):
 
 
 def mejor_metodo(directorio):
+    """(representación, métrica, inicialización) de la ganadora de la comparativa (primera fila)."""
     ruta = f"{directorio}/comparativa_kmeans_propio.csv"
     if not os.path.exists(ruta):
-        raise SystemExit("No hay comparativa_kmeans_propio.csv: ejecuta antes la comparativa o usa --metodo")
-    return pd.read_csv(ruta)["metodo"].iloc[0]
+        raise SystemExit("No hay comparativa_kmeans_propio.csv: ejecuta antes la comparativa o usa --metodo, "
+                         "--metrica e --init")
+    return tuple(pd.read_csv(ruta)[["metodo", "metrica", "init"]].iloc[0])
 
 
 def main():
@@ -135,15 +137,19 @@ def main():
     parser.add_argument("--representaciones", default="representaciones")
     parser.add_argument("--metodo", default=None,
                         help="Representación (p. ej. w2v o w2v+pca90%%); por defecto, la mejor de la comparativa")
-    parser.add_argument("--metrica", default="coseno", choices=list(METRICAS))
-    parser.add_argument("--init", default="kmeans++", choices=list(INICIALIZACIONES))
+    parser.add_argument("--metrica", default=None, choices=list(METRICAS), help="Por defecto, la de la ganadora")
+    parser.add_argument("--init", default=None, choices=list(INICIALIZACIONES), help="Por defecto, la de la ganadora")
     parser.add_argument("--k-max", type=int, default=20, help="Mayor k que se busca (como mucho, nº de contextos - 1)")
     parser.add_argument("--n-abreviaturas", type=int, default=300, help="Abreviaturas al azar (0 = todas)")
     parser.add_argument("--n-semillas", type=int, default=3)
     parser.add_argument("--semilla", type=int, default=42)
     args = parser.parse_args()
 
-    metodo = args.metodo or mejor_metodo(args.representaciones)
+    if not (args.metodo and args.metrica and args.init):
+        ganadora = mejor_metodo(args.representaciones)
+        args.metodo, args.metrica, args.init = (args.metodo or ganadora[0], args.metrica or ganadora[1],
+                                                args.init or ganadora[2])
+    metodo = args.metodo
     origen, _, porcentaje = re.match(r"([^+]+)(\+pca(\d+)%)?$", metodo).groups()
     varianza = int(porcentaje) / 100 if porcentaje else None
 

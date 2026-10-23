@@ -19,6 +19,16 @@ Uso (después de ejecutar representacion_vectorial.py):
 
 Resultados en --salida (por defecto 'representaciones/'):
     comparativa_kmeans_propio.csv, comparativa_kmeans_propio_por_abreviatura.csv
+
+Con --todos-juntos se compara igual que agrupa el modelo final (train.py): los textos de todas las abreviaturas
+mezclados en un único K-Means, con la misma k para todas las representaciones (cada una de --k). Para que sea
+rápido se usan --n-abreviaturas al azar, cada una con TODOS sus textos. Con k mucho menor que el nº de sentidos, el
+ARI global no dice nada, así que se ordena por el ARI dentro de cada abreviatura: se agrupa todo junto y luego,
+para cada abreviatura, se compara el cluster de sus textos con su sentido (¿el modelo global separa los sentidos
+de "AD"?), y se hace la media. También se dan el NMI frente a sentidos y frente a abreviaturas. Las dispersas
+(BoW, TF-IDF) se quedan con las --max-palabras columnas más frecuentes: con todo el vocabulario no caben en memoria.
+    python comparativa_kmeans_propio.py --todos-juntos --varianza-pca 0.8
+Resultados en <representaciones>/todos_juntos/ (o en --salida): comparativa_todos_juntos.csv y comparativa_todos_juntos_por_k.csv
 """
 
 import argparse
@@ -31,7 +41,7 @@ import numpy as np
 import pandas as pd
 from scipy import sparse  # solo para leer las matrices dispersas (.npz) que guarda representacion_vectorial.py
 
-from evaluacion import evaluar_con_etiquetas
+from evaluacion import ari, evaluar_con_etiquetas, nmi, pureza
 from kmeans_init import KMeans_parallel, kmeans_plus_plus, random_cluster_selection
 from metrics import CosineMetric, EuclideanMetric
 from modeloKMeans import KMeans
@@ -92,6 +102,75 @@ def agrupar(X, y, metrica, init, semillas):
     return {**ejecuciones[mejor][1], "ARI_medio": aris.mean(), "ARI_std": aris.std()}
 
 
+def ari_por_abreviatura(abreviaturas, sentidos, etiquetas):
+    """Media sobre las abreviaturas del ARI entre sus sentidos y los clusters del modelo global en que caen sus textos."""
+    datos = pd.DataFrame({"abreviatura": abreviaturas, "sentido": sentidos, "cluster": etiquetas})
+    # Con una muestra de textos alguna abreviatura puede quedarse con 1 solo texto: ahí el ARI no está definido
+    return float(np.mean([ari(g["sentido"].to_numpy(), g["cluster"].to_numpy())
+                          for _, g in datos.groupby("abreviatura") if len(g) > 1]))
+
+
+def comparativa_todos_juntos(df, matrices, variantes, metricas, inits, semillas, ks, n_abreviaturas, max_palabras,
+                             salida):
+    """Agrupa los textos de muchas abreviaturas juntos con la misma k en cada representación (como train.py)."""
+    elegidas = sorted(df["abreviatura"].unique())
+    if 0 < n_abreviaturas < len(elegidas):
+        elegidas = np.random.default_rng(semillas[0]).choice(elegidas, n_abreviaturas, replace=False)
+    df = df[df["abreviatura"].isin(elegidas)]
+    print(f"Todos juntos: {len(df)} textos de {df['abreviatura'].nunique()} abreviaturas y "
+          f"{df['sentido'].nunique()} sentidos; k = {', '.join(map(str, ks))}")
+    sentidos, abreviaturas = df["sentido"].to_numpy(), df["abreviatura"].to_numpy()
+
+    filas = []
+    for nombre, (origen, varianza) in variantes.items():
+        X = matrices[origen][df.index.to_numpy()]
+        if sparse.issparse(X):
+            frecuentes = np.argsort(-X.getnnz(axis=0))[:max_palabras]
+            X = X[:, np.sort(frecuentes)].toarray()
+        X = np.asarray(X, dtype=np.float64)
+        # Algún texto puede quedarse sin ninguna de las palabras frecuentes: vector vacío, se cuenta en su propio
+        # grupo para no romper el coseno (le damos una dimensión extra que solo usa él)
+        vacios = ~np.any(X, axis=1)
+        if vacios.any():
+            X = np.hstack([X, vacios[:, None].astype(np.float64)])
+        if varianza:
+            X = pca(X, varianza)
+        for metrica in metricas:
+            for init in inits:
+                if init == "kmeans||" and metrica != "euclidea":
+                    continue
+                inicio = time.time()
+                for k in ks:
+                    mejor = None
+                    for semilla in semillas:
+                        km = KMeans(p_cluster_number=k, p_metric=METRICAS[metrica](), p_init=INICIALIZACIONES[init]())
+                        km.fit(X, semilla)
+                        resultado = (inercia(km, X), km.predict(X))
+                        if mejor is None or resultado[0] < mejor[0]:
+                            mejor = resultado
+                    etiquetas = mejor[1]
+                    filas.append({"metodo": nombre, "metrica": metrica, "init": init, "k": k, "dims": X.shape[1],
+                                  "ARI_por_abreviatura": ari_por_abreviatura(abreviaturas, sentidos, etiquetas),
+                                  "NMI_sentidos": nmi(sentidos, etiquetas),
+                                  "NMI_abreviaturas": nmi(abreviaturas, etiquetas),
+                                  "ARI_sentidos": ari(sentidos, etiquetas),
+                                  "Pureza_sentidos": pureza(sentidos, etiquetas)})
+                print(f"  {nombre:<15} {metrica:<9} {init:<9} {time.time() - inicio:.1f} s", flush=True)
+
+    os.makedirs(salida, exist_ok=True)
+    por_k = pd.DataFrame(filas)
+    por_k.round(4).to_csv(f"{salida}/comparativa_todos_juntos_por_k.csv", index=False)
+    comparativa = (por_k.groupby(["metodo", "metrica", "init"], sort=False)
+                   [["dims", "ARI_por_abreviatura", "NMI_sentidos", "NMI_abreviaturas", "ARI_sentidos",
+                     "Pureza_sentidos"]].mean().round(4).sort_values("ARI_por_abreviatura", ascending=False))
+    comparativa.to_csv(f"{salida}/comparativa_todos_juntos.csv")
+    print(f"\nComparativa con todos los textos juntos (media sobre k = {', '.join(map(str, ks))}):")
+    print(comparativa.to_string())
+    metodo, metrica, init = comparativa.index[0]
+    print(f"\nMejor representación: {metodo} ({metrica}, {init})")
+    print(f"Resultados guardados en '{salida}/'")
+
+
 def main():
     parser = argparse.ArgumentParser(description="Comparativa de representaciones con nuestro K-Means")
     parser.add_argument("--representaciones", default="representaciones",
@@ -103,7 +182,16 @@ def main():
     parser.add_argument("--varianza-pca", nargs="+", type=float, default=[0.9],
                         help="Fracción de varianza que deben explicar las variantes '+pca' (0 = no calcularlas)")
     parser.add_argument("--salida", default=None, help="Por defecto, la carpeta de --representaciones")
+    parser.add_argument("--todos-juntos", action="store_true",
+                        help="Agrupar todos los textos juntos con la misma k (como train.py), no por abreviatura")
+    parser.add_argument("--n-abreviaturas", type=int, default=150,
+                        help="Con --todos-juntos: abreviaturas al azar, con todos sus textos (0 = todas)")
+    parser.add_argument("--k", nargs="+", type=int, default=[20, 50, 100], help="Con --todos-juntos: k a probar")
+    parser.add_argument("--max-palabras", type=int, default=5000,
+                        help="Con --todos-juntos: columnas más frecuentes que se quedan las dispersas")
     parser.add_argument("--semilla", type=int, default=42)
+    parser.add_argument("--reanudar", action="store_true",
+                        help="Saltarse las combinaciones que ya están en el archivo parcial de --salida")
     args = parser.parse_args()
     salida = args.salida or args.representaciones
 
@@ -134,14 +222,31 @@ def main():
         if 0 < varianza <= 1:
             variantes.update({f"{n}+pca{varianza:.0%}": (n, varianza) for n in matrices})
     semillas = [args.semilla + i for i in range(args.n_semillas)]
+    if args.todos_juntos:
+        # Por defecto en su propia carpeta, para no mezclarse con los resultados por abreviatura
+        salida = args.salida or f"{args.representaciones}/todos_juntos"
+        return comparativa_todos_juntos(df, matrices, variantes, args.metrica, args.init, semillas, args.k,
+                                        args.n_abreviaturas, args.max_palabras, salida)
 
-    filas = []
+    # Cada combinación se guarda en un archivo parcial en cuanto termina: si la ejecución se corta, con --reanudar
+    # se continúa desde ahí en vez de empezar de cero
+    parcial = f"{salida}/comparativa_kmeans_propio_por_abreviatura_parcial.csv"
+    filas, hechas = [], set()
+    if args.reanudar and os.path.exists(parcial):
+        anteriores = pd.read_csv(parcial)
+        filas = anteriores.to_dict("records")
+        hechas = set(map(tuple, anteriores[["metodo", "metrica", "init"]].drop_duplicates().values))
+        print(f"Se reanuda: {len(hechas)} combinaciones ya hechas en '{parcial}'")
+    elif os.path.exists(parcial):
+        os.remove(parcial)
     for nombre, (origen, varianza) in variantes.items():
         for metrica in args.metrica:
             for init in args.init:
                 if init == "kmeans||" and metrica != "euclidea":
                     continue  # K-Means|| solo está implementado con distancia euclídea
-                inicio = time.time()
+                if (nombre, metrica, init) in hechas:
+                    continue
+                inicio, n_antes = time.time(), len(filas)
                 for abrev, grupo in df.groupby("abreviatura"):
                     X = matrices[origen][grupo.index.to_numpy()]
                     if sparse.issparse(X):
@@ -158,7 +263,9 @@ def main():
                                          f"en {abrev}: {type(e).__name__}: {e}")
                     filas.append({"metodo": nombre, "metrica": metrica, "init": init, "abreviatura": abrev,
                                   "n_sentidos": grupo["sentido"].nunique(), "dims": X.shape[1], **resultado})
-                print(f"  {nombre:<15} {metrica:<9} {init:<9} {time.time() - inicio:.1f} s")
+                pd.DataFrame(filas[n_antes:]).round(4).to_csv(parcial, mode="a", index=False,
+                                                              header=not os.path.exists(parcial))
+                print(f"  {nombre:<15} {metrica:<9} {init:<9} {time.time() - inicio:.1f} s", flush=True)
 
     por_abrev = pd.DataFrame(filas)
     por_abrev.round(4).to_csv(f"{salida}/comparativa_kmeans_propio_por_abreviatura.csv", index=False)
@@ -166,6 +273,7 @@ def main():
                    .mean().round(4).sort_values("ARI", ascending=False))
 
     comparativa.to_csv(f"{salida}/comparativa_kmeans_propio.csv")
+    os.remove(parcial)  # ya está todo en el archivo completo
     print("\nComparativa con nuestro K-Means (media sobre abreviaturas; k = nº de sentidos; "
           "dims = dimensiones medias):")
     print(comparativa.to_string())
