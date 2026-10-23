@@ -180,7 +180,7 @@ if __name__ == "__main__":
     parser.add_argument("--datos", type=str, required=True, help="Ruta a la matriz vectorizada ganadora (ej. representaciones/X_bert_abrev+pca90%.npy)")
     parser.add_argument("--instancias", type=str, default="representaciones/instancias.csv", help="Ruta al CSV con la metadata")
     parser.add_argument("--distancia", choices=["cosine", "euclidean"], default="cosine", help="Métrica geométrica a optimizar")
-    parser.add_argument("--init", choices=["random", "plus", "parallel"], default="plus", help="Algoritmo de inicialización de centroides")
+    parser.add_argument("--init", choices=["random", "plus", "parallel"], default="random", help="Algoritmo de inicialización de centroides")
     parser.add_argument("--semilla", type=int, default=42)
     parser.add_argument("--rounds", type=int, default=5)
     args = parser.parse_args()

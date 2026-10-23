@@ -93,3 +93,7 @@ Guarda en `representaciones/graficos/`:
 - `proceso_kmeans_<abreviatura>.png`: resumen en 6 viñetas.
 - `proceso_kmeans_<abreviatura>.gif`: animación vuelta a vuelta (se abre con el visor de imágenes o el navegador).
 - `proceso_kmeans_<abreviatura>.json`: los datos de cada vuelta.
+
+# Figuras del informe
+La carpeta `figuras/` tiene las 9 figuras que van en el informe (copias de las que generan los scripts de gráficos).
+Es la única carpeta de imágenes que se sube a GitHub. Si se vuelven a generar los gráficos, hay que copiarlas otra vez.

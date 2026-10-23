@@ -60,7 +60,7 @@ def ajustar_pca(X, varianza):
 
 
 class ModeloUnificado:
-    def __init__(self, metrica="coseno", init="kmeans++", varianza_pca=0.8, k_max=20, semillas=(42, 43, 44),
+    def __init__(self, metrica="coseno", init="random", varianza_pca=0.8, k_max=20, semillas=(42, 43, 44),
                  metodo="bert_media"):
         self.metodo = metodo  # la representación (matriz X_<metodo>) con la que se entrena
         self.metrica = metrica

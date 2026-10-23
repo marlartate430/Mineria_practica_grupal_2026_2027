@@ -73,7 +73,7 @@ def mejor_ejecucion(X, k, metrica, init, semillas):
     return mejor[1]
 
 
-def silueta_con_k(X, k, metrica="coseno", init="kmeans++", semillas=(42,), etiquetas_por_k=None):
+def silueta_con_k(X, k, metrica="coseno", init="random", semillas=(42,), etiquetas_por_k=None):
     """Silueta (evaluacion.py) del clustering de X en k grupos; -1 si el K-Means deja menos de 2 clusters."""
     etiquetas = mejor_ejecucion(X, k, metrica, init, semillas)
     if etiquetas_por_k is not None:
@@ -148,7 +148,7 @@ def main():
     parser.add_argument("--metodo", default=None,
                         help="Representación (p. ej. w2v o w2v+pca90%%); por defecto, la mejor de la comparativa")
     parser.add_argument("--metrica", default="coseno", choices=list(METRICAS))
-    parser.add_argument("--init", default="kmeans++", choices=list(INICIALIZACIONES))
+    parser.add_argument("--init", default="random", choices=list(INICIALIZACIONES))
     parser.add_argument("--k-min", type=int, default=2, help="Menor k que se busca")
     parser.add_argument("--k-max", type=int, default=100, help="Mayor k que se busca")
     parser.add_argument("--salida", default=None, help="Carpeta de resultados (por defecto, <representaciones>/todos_juntos)")

@@ -225,7 +225,7 @@ def main():
         # Métrica e inicialización de la ganadora, si no se dan
         ganadora = pd.read_csv(ruta_resumen).iloc[0]
         args.metrica, args.init = args.metrica or ganadora["metrica"], args.init or ganadora["init"]
-    args.metrica, args.init = args.metrica or "coseno", args.init or "kmeans++"
+    args.metrica, args.init = args.metrica or "coseno", args.init or "random"
 
     df = pd.read_csv(f"{args.representaciones}/instancias.csv", usecols=["abreviatura", "sentido"])
     abreviaturas = args.abreviaturas or elegir_abreviaturas(

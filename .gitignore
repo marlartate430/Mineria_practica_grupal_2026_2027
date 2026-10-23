@@ -9,3 +9,6 @@ dataset/
 representaciones/
 informe/
 .ipynb_checkpoints/
+
+# Figuras del informe (sí se suben, para que las tenga todo el grupo)
+!figuras/*.png

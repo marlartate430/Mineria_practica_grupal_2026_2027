@@ -61,7 +61,7 @@ def mejor_ejecucion(X, k, metrica, init, semillas):
     return mejor[1]
 
 
-def silueta_con_k(X, k, metrica="coseno", init="kmeans++", semillas=(42,), etiquetas_por_k=None):
+def silueta_con_k(X, k, metrica="coseno", init="random", semillas=(42,), etiquetas_por_k=None):
     """Silueta (evaluacion.py) del clustering de X en k grupos; -1 si el K-Means deja menos de 2 clusters."""
     etiquetas = mejor_ejecucion(X, k, metrica, init, semillas)
     if etiquetas_por_k is not None:

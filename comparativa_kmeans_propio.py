@@ -177,7 +177,7 @@ def main():
                         help="Carpeta con instancias.csv y X_<metodo>.npy/.npz")
     parser.add_argument("--metodos", nargs="+", default=None, help="Por defecto, todas las X_* que haya")
     parser.add_argument("--metrica", nargs="+", default=["coseno"], choices=list(METRICAS))
-    parser.add_argument("--init", nargs="+", default=["kmeans++"], choices=list(INICIALIZACIONES))
+    parser.add_argument("--init", nargs="+", default=["random"], choices=list(INICIALIZACIONES))
     parser.add_argument("--n-semillas", type=int, default=10)
     parser.add_argument("--varianza-pca", nargs="+", type=float, default=[0.9],
                         help="Fracción de varianza que deben explicar las variantes '+pca' (0 = no calcularlas)")
