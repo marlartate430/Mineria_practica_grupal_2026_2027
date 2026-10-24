@@ -1,0 +1,7 @@
+frase_a,frase_b,mismo_sentido,bert_abrev,w2v
+patients with MS showed demyelinating lesions in the white matter,relapses of MS were treated with interferon beta,True,0.987,1.0
+patients with MS showed demyelinating lesions in the white matter,the peptides were identified by MS after tryptic digestion,False,0.93,1.0
+patients with MS showed demyelinating lesions in the white matter,metabolites were quantified using liquid chromatography coupled to MS,False,0.882,1.0
+relapses of MS were treated with interferon beta,the peptides were identified by MS after tryptic digestion,False,0.925,1.0
+relapses of MS were treated with interferon beta,metabolites were quantified using liquid chromatography coupled to MS,False,0.882,1.0
+the peptides were identified by MS after tryptic digestion,metabolites were quantified using liquid chromatography coupled to MS,True,0.922,1.0

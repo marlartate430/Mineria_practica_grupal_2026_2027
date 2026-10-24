@@ -1,0 +1,82 @@
+seccion,medida,valor
+1. Instancias y atributos,instancias,257500
+1. Instancias y atributos,atributos de instancias.csv,"abreviatura, sentido, doc, posicion, texto, ini, fin"
+1. Instancias y atributos,abreviaturas,3170
+1. Instancias y atributos,formas de abreviatura en minúsculas,3007
+1. Instancias y atributos,sentidos (clases),12875
+1. Instancias y atributos,instancias por sentido (mín.),20
+1. Instancias y atributos,instancias por sentido (máx.),20
+1. Instancias y atributos,sentidos por abreviatura (media),4.061514
+1. Instancias y atributos,sentidos por abreviatura (mediana),2.0
+1. Instancias y atributos,sentidos por abreviatura (máx.),58
+1. Instancias y atributos,instancias por abreviatura (mín.),40
+1. Instancias y atributos,instancias por abreviatura (máx.),1160
+1. Instancias y atributos,abstracts distintos de origen,251981
+1. Instancias y atributos,palabras por ventana (media),44.869895
+1. Instancias y atributos,palabras por ventana (mediana),51.0
+1. Instancias y atributos,palabras por ventana (mín.),1
+1. Instancias y atributos,palabras por ventana (máx.),51
+1. Instancias y atributos,"ventanas completas (51 palabras, %)",60.535534
+2. Instancias repetidas,contextos repetidos dentro de la misma abreviatura,13
+2. Instancias repetidas,contextos repetidos entre abreviaturas,26
+2. Instancias repetidas,repetidos con sentidos distintos,0
+2. Instancias repetidas,apariciones repetidas (mismo abstract y posición),0
+2. Instancias repetidas,repetidos (% de las instancias),0.005049
+2. Instancias repetidas,vectores repetidos en bert_media (copias de más),26
+3. Valores perdidos,nulos en instancias.csv,0
+3. Valores perdidos,bow: NaN / vectores vacíos,0 / 5
+3. Valores perdidos,tfidf: NaN / vectores vacíos,0 / 5
+3. Valores perdidos,lsa: NaN / vectores vacíos,0 / 5
+3. Valores perdidos,lda: NaN / vectores vacíos,0 / 0
+3. Valores perdidos,w2v: NaN / vectores vacíos,0 / 0
+3. Valores perdidos,d2v: NaN / vectores vacíos,0 / 0
+3. Valores perdidos,st: NaN / vectores vacíos,0 / 0
+3. Valores perdidos,bert_abrev: NaN / vectores vacíos,0 / 0
+3. Valores perdidos,bert_media: NaN / vectores vacíos,0 / 0
+4. Vocabulario,tokens en las ventanas,11553387
+4. Vocabulario,tipos (palabras distintas),242175
+4. Vocabulario,ocurrencias que son palabras vacías o abreviaturas (%),46.043848
+4. Vocabulario,tipos sin palabras vacías ni abreviaturas,238934
+4. Vocabulario,tipos en un único contexto (df = 1),146057
+4. Vocabulario,tipos en un único contexto (% de los tipos útiles),61.128596
+4. Vocabulario,ocurrencias útiles de tipos con df = 1 (%),2.607638
+4. Vocabulario,vocabulario de bow,93244
+4. Vocabulario,vocabulario de tfidf,715461
+5. Palabras fuera de vocabulario (OOV),BoW/TF-IDF: ocurrencias útiles descartadas por df = 1 (%),2.607638
+5. Palabras fuera de vocabulario (OOV),BiomedBERT: subtokens [UNK] (%),2.3e-05
+5. Palabras fuera de vocabulario (OOV),BiomedBERT: subtokens por ventana (media),53.420703
+5. Palabras fuera de vocabulario (OOV),BiomedBERT: subtokens por ventana (máx.),151
+5. Palabras fuera de vocabulario (OOV),BiomedBERT: ventanas truncadas (más de 256),0
+5. Palabras fuera de vocabulario (OOV),BiomedBERT: abreviaturas de un solo subtoken (%),59.716088
+5. Palabras fuera de vocabulario (OOV),BiomedBERT: subtokens por abreviatura (media),1.462776
+6. Rango de los atributos,bow: dimensiones,93244
+6. Rango de los atributos,bow: rango,[1; 15] (sin los ceros)
+6. Rango de los atributos,bow: valores no nulos por fila (media),20.826113
+6. Rango de los atributos,bow: densidad (%),0.022335
+6. Rango de los atributos,tfidf: dimensiones,715461
+6. Rango de los atributos,tfidf: rango,"[0,037; 1] (sin los ceros)"
+6. Rango de los atributos,tfidf: valores no nulos por fila (media),32.728186
+6. Rango de los atributos,tfidf: densidad (%),0.004574
+6. Rango de los atributos,lsa: dimensiones,300
+6. Rango de los atributos,lsa: rango,"[-0,23; 0,37]"
+6. Rango de los atributos,lsa: norma media,0.262458
+6. Rango de los atributos,lda: dimensiones,20
+6. Rango de los atributos,lda: rango,"[0,00098; 0,98]"
+6. Rango de los atributos,lda: norma media,0.630781
+6. Rango de los atributos,suma de cada fila de lda (media),1.0
+6. Rango de los atributos,w2v: dimensiones,200
+6. Rango de los atributos,w2v: rango,"[-0,76; 0,71]"
+6. Rango de los atributos,w2v: norma media,1.65963
+6. Rango de los atributos,d2v: dimensiones,100
+6. Rango de los atributos,d2v: rango,"[-1,22; 1,36]"
+6. Rango de los atributos,d2v: norma media,2.405493
+6. Rango de los atributos,st: dimensiones,384
+6. Rango de los atributos,st: rango,"[-0,28; 0,28]"
+6. Rango de los atributos,st: norma media,1.0
+6. Rango de los atributos,bert_abrev: dimensiones,768
+6. Rango de los atributos,bert_abrev: rango,"[-14,06; 8,94]"
+6. Rango de los atributos,bert_abrev: norma media,14.930449
+6. Rango de los atributos,bert_media: dimensiones,768
+6. Rango de los atributos,bert_media: rango,"[-13,74; 2,87]"
+6. Rango de los atributos,bert_media: norma media,13.827419
+6. Rango de los atributos,coseno medio entre pares de contextos al azar en bert_media,0.971705

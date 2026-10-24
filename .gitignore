@@ -17,3 +17,6 @@ informe/
 
 # Pruebas de la demo (imagen + salida de cada frase)
 !modelos_unificado/demo/*.png
+
+# Resultados para la entrega (CSVs pequeños, sí se suben)
+!resultados/**/*.csv

@@ -1,6 +1,6 @@
 # Proyecto Minería
 ## Advertencia
-- **NO** añadir los CSVs. 
+- **NO** añadir los CSVs (salvo los de `resultados/`, que son los resultados que se entregan).
 - Los datasets estarán dentro de la carpeta `datasets`. Si no existe en vuestro proyecto lo añadís.
 
 ## Enunciado

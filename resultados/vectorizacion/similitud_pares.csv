@@ -1,0 +1,5 @@
+tipo,frase_1,frase_2,bow,tfidf,lsa,lda,w2v,d2v,st,bert_media
+sinonimos,the patient suffered a myocardial infarction,the patient had a heart attack,0.289,0.059,0.322,1.0,0.81,0.831,0.769,0.987
+negacion,the tumor responded to treatment,the tumor did not respond to treatment,0.577,0.148,0.871,0.991,0.893,0.807,0.894,0.992
+polisemia,patients with MS showed demyelinating lesions in the brain,the peptides were identified by MS after tryptic digestion,0.0,0.0,-0.0,0.024,0.64,0.529,0.266,0.962
+no_relacionadas,insulin resistance in obese patients,the bacterial strain was grown in broth,0.0,0.0,0.016,0.036,0.496,0.511,-0.123,0.926
