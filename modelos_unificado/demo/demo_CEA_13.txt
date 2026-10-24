@@ -1,0 +1,78 @@
+
+######################################################################
+FRASE 6 DE 12
+######################################################################
+Prueba del 24/10/2026 12:22
+Abreviatura: CEA
+Frase: erditzean CEA analgesia epiduralak mina ondo kontrolatu zuen eta morfina gutxiago behar izan zen
+
+Modelo entrenado con bert_media + PCA 80% (coseno, random)
+
+CEA: 4 clusters (4 sentidos reales)
+  cluster 0: predomina 'continuous epidural analgesia' (16 de sus 18 textos de entrenamiento)
+  cluster 1: predomina 'carcinoembryonic' (16 de sus 19 textos de entrenamiento)
+  cluster 2: predomina 'costeffectiveness analysis' (13 de sus 13 textos de entrenamiento)
+  cluster 3: predomina 'enzyme activity' (14 de sus 14 textos de entrenamiento)
+
+======================================================================
+PASO A PASO
+======================================================================
+
+1. Ventana de ±25 palabras alrededor de 'CEA' (sin puntuación, en minúsculas salvo la abreviatura):
+   erditzean CEA analgesia epiduralak mina ondo kontrolatu zuen eta morfina gutxiago behar izan zen
+
+2. bert_media la parte en 32 tokens ('##' = trozo pegado al anterior):
+   erd | ##itz | ##ea | ##n | cea | analgesia | epidural | ##ak | min | ##a | on | ##do | kon | ##tr | ##ola | ##t | ##u | z | ##ue | ##n | eta | mor | ##fin | ##a | gut | ##xi | ##ago | beha | ##r | iz | ##an | zen
+   De sus 14 palabras: 4 están enteras en el vocabulario (29%), 10 se parten en trozos (71%) y 0 son [UNK]
+      erditzean -> erd | ##itz | ##ea | ##n
+      epiduralak -> epidural | ##ak
+      mina -> min | ##a
+      ondo -> on | ##do
+      kontrolatu -> kon | ##tr | ##ola | ##t | ##u
+      zuen -> z | ##ue | ##n
+      morfina -> mor | ##fin | ##a
+      gutxiago -> gut | ##xi | ##ago
+      behar -> beha | ##r
+      izan -> iz | ##an
+
+3. Vector de la frase: 768 números. Los 5 primeros: [ 0.035  0.088 -0.024  0.161 -0.013]
+
+4. PCA propio de CEA: se resta su media y se proyecta en sus 27 componentes -> 27 números. Los 5 primeros: [ 1.664 -0.897 -0.382  0.441 -0.064]
+
+5. Distancia (coseno) a cada uno de los 4 centroides de CEA:
+   -> cluster 1: 0.637   (predomina 'carcinoembryonic')
+      cluster 2: 1.056   (predomina 'costeffectiveness analysis')
+      cluster 3: 1.118   (predomina 'enzyme activity')
+      cluster 0: 1.370   (predomina 'continuous epidural analgesia')
+   Gana el más cercano: cluster 1
+
+6. Los 5 textos de entrenamiento del cluster 1 más parecidos a la frase:
+   distancia 0.412 · cluster 1 · sentido real 'costeffectiveness analysis'
+      ...CEA...
+   distancia 0.428 · cluster 1 · sentido real 'carcinoembryonic'
+      ...for a mean period of months however objective RT response was considered definite only if associated with a greater than decline of an eleva...
+   distancia 0.548 · cluster 1 · sentido real 'carcinoembryonic'
+      ...agents with the monoclonal antibodies to the neoplasm and infusing the patient with this combination three tumorassociated markers that are ...
+   distancia 0.573 · cluster 1 · sentido real 'carcinoembryonic'
+      ...carcinoma is discovered in patients of the series per cent the preoperative diagnosis is supplemented by thyroscintigraphy with iodine or te...
+   distancia 0.682 · cluster 1 · sentido real 'carcinoembryonic'
+      ...alpha primarily to fulfill albumin gene activation functions at early developmental stages factor ftf seems to be the key regulator of afp g...
+
+7. Imagen:
+  modelos_unificado/demo/demo_CEA_13.png
+
+Texto: erditzean CEA analgesia epiduralak mina ondo kontrolatu zuen eta morfina gutxiago behar izan zen
+-> asignado al cluster 1 (predomina 'carcinoembryonic')
+
+MÉTRICAS DEL CLUSTER 1
+  Tamaño: 19 textos de entrenamiento
+  Pureza: 16/19 (84%) son del sentido que predomina, 'carcinoembryonic'
+  Distancia de la frase al centroide: 0.637  (textos del cluster: media 0.550, máxima 0.809)
+  La frase está más cerca del centroide que el 26% de los textos del cluster
+
+MÉTRICAS DEL MODELO DE CEA
+  k elegida (silueta): 4   k real (nº de sentidos): 4
+  Silueta (entrenamiento): 0.151
+  En prueba (textos no vistos): ARI 0.821 · NMI 0.892 · pureza 0.938
+
+Guardado en modelos_unificado/demo/demo_CEA_13.txt (y añadido a modelos_unificado/demo/todas_las_pruebas.txt)

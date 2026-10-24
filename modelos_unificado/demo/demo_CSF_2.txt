@@ -1,0 +1,73 @@
+Prueba del 24/10/2026 10:59
+Abreviatura: CSF
+Frase: pigs infected with CSF virus developed fever and haemorrhages and the herd was culled
+
+Modelo entrenado con bert_media + PCA 80% (coseno, random)
+
+CSF: 9 clusters (6 sentidos reales)
+  cluster 0: predomina 'colonystimulating factors' (8 de sus 9 textos de entrenamiento)
+  cluster 1: predomina 'classical swine fever' (8 de sus 9 textos de entrenamiento)
+  cluster 2: predomina 'classical swine fever' (5 de sus 9 textos de entrenamiento)
+  cluster 3: predomina 'cerebrospinal' (5 de sus 10 textos de entrenamiento)
+  cluster 4: predomina 'cerebrospinal' (6 de sus 11 textos de entrenamiento)
+  cluster 5: predomina 'cytostatic factor' (15 de sus 18 textos de entrenamiento)
+  cluster 6: predomina 'colonystimulating factors' (7 de sus 7 textos de entrenamiento)
+  cluster 7: predomina 'coronary sinus flow' (15 de sus 17 textos de entrenamiento)
+  cluster 8: predomina 'cerebrospinal fluid samples' (5 de sus 6 textos de entrenamiento)
+
+======================================================================
+PASO A PASO
+======================================================================
+
+1. Ventana de ±25 palabras alrededor de 'CSF' (sin puntuación, en minúsculas salvo la abreviatura):
+   pigs infected with CSF virus developed fever and haemorrhages and the herd was culled
+
+2. bert_media la parte en 16 tokens ('##' = trozo pegado al anterior):
+   pigs | infected | with | csf | virus | developed | fever | and | haemorrhage | ##s | and | the | herd | was | cull | ##ed
+
+3. Vector de la frase: 768 números. Los 5 primeros: [-0.068  0.085  0.091 -0.08  -0.049]
+
+4. PCA propio de CSF: se resta su media y se proyecta en sus 34 componentes -> 34 números. Los 5 primeros: [ 0.006 -1.029  0.379  0.722  0.351]
+
+5. Distancia (coseno) a cada uno de los 9 centroides de CSF:
+   -> cluster 1: 0.335   (predomina 'classical swine fever')
+      cluster 2: 0.708   (predomina 'classical swine fever')
+      cluster 8: 0.842   (predomina 'cerebrospinal fluid samples')
+      cluster 4: 1.020   (predomina 'cerebrospinal')
+      cluster 3: 1.055   (predomina 'cerebrospinal')
+      cluster 7: 1.070   (predomina 'coronary sinus flow')
+      cluster 6: 1.124   (predomina 'colonystimulating factors')
+      cluster 5: 1.250   (predomina 'cytostatic factor')
+      cluster 0: 1.347   (predomina 'colonystimulating factors')
+   Gana el más cercano: cluster 1
+
+6. Los 5 textos de entrenamiento del cluster 1 más parecidos a la frase:
+   distancia 0.313 · cluster 1 · sentido real 'classical swine fever'
+      ...CSF csf is a contagious and devastating disease causing serious losses in the pig industry worldwide vaccination of pigs with the convention...
+   distancia 0.421 · cluster 1 · sentido real 'classical swine fever'
+      ...the hunting season in crown properties national parks and the free wildlife belt in the netherlands sera were screened for the presence of a...
+   distancia 0.429 · cluster 1 · sentido real 'classical swine fever'
+      ...CP swine fever csf or hog cholera caused by the CSF virus csfv is one of the most important viral diseases that cause serious economic loss ...
+   distancia 0.430 · cluster 1 · sentido real 'classical swine fever'
+      ...CSF csf is one of the most devastating epizootic diseases of pigs causing high morbidity and mortality worldwide the diversity of clinical s...
+   distancia 0.566 · cluster 1 · sentido real 'classical swine fever'
+      ...deer and bongo phylogenetic analysis enabled the segregation of pestiviruses into the established species bovine viral diarrhea virus bvdv b...
+
+7. Imagen:
+  modelos_unificado/demo/demo_CSF_2.png
+
+Texto: pigs infected with CSF virus developed fever and haemorrhages and the herd was culled
+-> asignado al cluster 1 (predomina 'classical swine fever')
+
+MÉTRICAS DEL CLUSTER 1
+  Tamaño: 9 textos de entrenamiento
+  Pureza: 8/9 (89%) son del sentido que predomina, 'classical swine fever'
+  Distancia de la frase al centroide: 0.335  (textos del cluster: media 0.280, máxima 0.425)
+  La frase está más cerca del centroide que el 33% de los textos del cluster
+
+MÉTRICAS DEL MODELO DE CSF
+  k elegida (silueta): 9   k real (nº de sentidos): 6
+  Silueta (entrenamiento): 0.143
+  En prueba (textos no vistos): ARI 0.553 · NMI 0.789 · pureza 0.833
+
+Guardado en modelos_unificado/demo/demo_CSF_2.txt (y añadido a modelos_unificado/demo/todas_las_pruebas.txt)

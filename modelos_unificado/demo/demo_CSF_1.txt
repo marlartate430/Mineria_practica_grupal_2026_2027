@@ -1,0 +1,73 @@
+Prueba del 24/10/2026 10:57
+Abreviatura: CSF
+Frase: CSF samples obtained by lumbar puncture showed elevated protein in patients with meningitis
+
+Modelo entrenado con bert_media + PCA 80% (coseno, random)
+
+CSF: 9 clusters (6 sentidos reales)
+  cluster 0: predomina 'colonystimulating factors' (8 de sus 9 textos de entrenamiento)
+  cluster 1: predomina 'classical swine fever' (8 de sus 9 textos de entrenamiento)
+  cluster 2: predomina 'classical swine fever' (5 de sus 9 textos de entrenamiento)
+  cluster 3: predomina 'cerebrospinal' (5 de sus 10 textos de entrenamiento)
+  cluster 4: predomina 'cerebrospinal' (6 de sus 11 textos de entrenamiento)
+  cluster 5: predomina 'cytostatic factor' (15 de sus 18 textos de entrenamiento)
+  cluster 6: predomina 'colonystimulating factors' (7 de sus 7 textos de entrenamiento)
+  cluster 7: predomina 'coronary sinus flow' (15 de sus 17 textos de entrenamiento)
+  cluster 8: predomina 'cerebrospinal fluid samples' (5 de sus 6 textos de entrenamiento)
+
+======================================================================
+PASO A PASO
+======================================================================
+
+1. Ventana de ±25 palabras alrededor de 'CSF' (sin puntuación, en minúsculas salvo la abreviatura):
+   CSF samples obtained by lumbar puncture showed elevated protein in patients with meningitis
+
+2. bert_media la parte en 13 tokens ('##' = trozo pegado al anterior):
+   csf | samples | obtained | by | lumbar | puncture | showed | elevated | protein | in | patients | with | meningitis
+
+3. Vector de la frase: 768 números. Los 5 primeros: [ 0.034  0.1    0.111 -0.093 -0.117]
+
+4. PCA propio de CSF: se resta su media y se proyecta en sus 34 componentes -> 34 números. Los 5 primeros: [-0.028 -0.704 -0.274 -0.013 -0.661]
+
+5. Distancia (coseno) a cada uno de los 9 centroides de CSF:
+   -> cluster 3: 0.381   (predomina 'cerebrospinal')
+      cluster 8: 0.458   (predomina 'cerebrospinal fluid samples')
+      cluster 4: 0.852   (predomina 'cerebrospinal')
+      cluster 6: 0.916   (predomina 'colonystimulating factors')
+      cluster 2: 0.951   (predomina 'classical swine fever')
+      cluster 1: 0.997   (predomina 'classical swine fever')
+      cluster 7: 1.141   (predomina 'coronary sinus flow')
+      cluster 0: 1.145   (predomina 'colonystimulating factors')
+      cluster 5: 1.312   (predomina 'cytostatic factor')
+   Gana el más cercano: cluster 3
+
+6. Los 5 textos de entrenamiento del cluster 3 más parecidos a la frase:
+   distancia 0.365 · cluster 3 · sentido real 'cerebrospinal fluid samples'
+      ...fluid lateral cervical puncture is simple to perform and appears to have less potential for major complications than suboccipital puncture a...
+   distancia 0.440 · cluster 3 · sentido real 'cerebrospinal'
+      ...idiopathic intracranial hypertension iih is characterised by raised intracranial pressure icp with normal CSF fluid csf composition and abse...
+   distancia 0.443 · cluster 3 · sentido real 'cerebrospinal'
+      ...could not be used to reliably predict the presence of pain in either acute or chronic settings these data suggest that cystatin c concentrat...
+   distancia 0.533 · cluster 3 · sentido real 'cerebrospinal fluid samples'
+      ...no agent is implicated in most CNS system cns infections to investigate CSF from patients with cns infections of unknown cause in hospital i...
+   distancia 0.570 · cluster 3 · sentido real 'cerebrospinal fluid samples'
+      ...clinical tbi however remains to be defined we assessed antioxidant defenses and oxidative stress in pediatric tbi by applying a comprehensiv...
+
+7. Imagen:
+  modelos_unificado/demo/demo_CSF_1.png
+
+Texto: CSF samples obtained by lumbar puncture showed elevated protein in patients with meningitis
+-> asignado al cluster 3 (predomina 'cerebrospinal')
+
+MÉTRICAS DEL CLUSTER 3
+  Tamaño: 10 textos de entrenamiento
+  Pureza: 5/10 (50%) son del sentido que predomina, 'cerebrospinal'
+  Distancia de la frase al centroide: 0.381  (textos del cluster: media 0.470, máxima 0.593)
+  La frase está más cerca del centroide que el 70% de los textos del cluster
+
+MÉTRICAS DEL MODELO DE CSF
+  k elegida (silueta): 9   k real (nº de sentidos): 6
+  Silueta (entrenamiento): 0.143
+  En prueba (textos no vistos): ARI 0.553 · NMI 0.789 · pureza 0.833
+
+Guardado en modelos_unificado/demo/demo_CSF_1.txt (y añadido a modelos_unificado/demo/todas_las_pruebas.txt)

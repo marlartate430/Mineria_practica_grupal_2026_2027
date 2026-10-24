@@ -1,0 +1,69 @@
+
+######################################################################
+FRASE 2 DE 12
+######################################################################
+Prueba del 24/10/2026 12:22
+Abreviatura: CEA
+Frase: the CEA of epidural analgesia during labour showed it was cheaper per patient
+
+Modelo entrenado con bert_media + PCA 80% (coseno, random)
+
+CEA: 4 clusters (4 sentidos reales)
+  cluster 0: predomina 'continuous epidural analgesia' (16 de sus 18 textos de entrenamiento)
+  cluster 1: predomina 'carcinoembryonic' (16 de sus 19 textos de entrenamiento)
+  cluster 2: predomina 'costeffectiveness analysis' (13 de sus 13 textos de entrenamiento)
+  cluster 3: predomina 'enzyme activity' (14 de sus 14 textos de entrenamiento)
+
+======================================================================
+PASO A PASO
+======================================================================
+
+1. Ventana de ±25 palabras alrededor de 'CEA' (sin puntuación, en minúsculas salvo la abreviatura):
+   the CEA of epidural analgesia during labour showed it was cheaper per patient
+
+2. bert_media la parte en 14 tokens ('##' = trozo pegado al anterior):
+   the | cea | of | epidural | analgesia | during | labour | showed | it | was | cheap | ##er | per | patient
+   De sus 13 palabras: 12 están enteras en el vocabulario (92%), 1 se parten en trozos (8%) y 0 son [UNK]
+      cheaper -> cheap | ##er
+
+3. Vector de la frase: 768 números. Los 5 primeros: [ 0.073  0.123 -0.135  0.04  -0.211]
+
+4. PCA propio de CEA: se resta su media y se proyecta en sus 27 componentes -> 27 números. Los 5 primeros: [-0.632 -0.552  0.266  0.873 -0.439]
+
+5. Distancia (coseno) a cada uno de los 4 centroides de CEA:
+   -> cluster 0: 0.296   (predomina 'continuous epidural analgesia')
+      cluster 2: 0.891   (predomina 'costeffectiveness analysis')
+      cluster 3: 1.381   (predomina 'enzyme activity')
+      cluster 1: 1.550   (predomina 'carcinoembryonic')
+   Gana el más cercano: cluster 0
+
+6. Los 5 textos de entrenamiento del cluster 0 más parecidos a la frase:
+   distancia 0.350 · cluster 0 · sentido real 'continuous epidural analgesia'
+      ...transversus abdominis plane block is an effective postoperative analgesic technique T3 abdominal surgery but no study has compared continuou...
+   distancia 0.381 · cluster 0 · sentido real 'continuous epidural analgesia'
+      ...this randomized doubleblind trial was designed to evaluate the antiemetic effect of CEA with droperidol mixed with bupivacaine and buprenorp...
+   distancia 0.403 · cluster 0 · sentido real 'continuous epidural analgesia'
+      ...in group i the average dose of supplemental analgesia was mg intravenous morphinekg h whereas in group ii it was only mg intravenous morphin...
+   distancia 0.443 · cluster 0 · sentido real 'continuous epidural analgesia'
+      ...with or without a local anesthetic agent is a commonly employed technique for PR T3 thoracotomy in this study we prospectively evaluated the...
+   distancia 0.484 · cluster 0 · sentido real 'continuous epidural analgesia'
+      ...has been used in various procedures such as for surgery and CA pain control in japan portable and disposable infusion kits are increasingly ...
+
+7. Imagen:
+  modelos_unificado/demo/demo_CEA_9.png
+
+Texto: the CEA of epidural analgesia during labour showed it was cheaper per patient
+-> asignado al cluster 0 (predomina 'continuous epidural analgesia')
+
+MÉTRICAS DEL CLUSTER 0
+  Tamaño: 18 textos de entrenamiento
+  Pureza: 16/18 (89%) son del sentido que predomina, 'continuous epidural analgesia'
+  Distancia de la frase al centroide: 0.296  (textos del cluster: media 0.422, máxima 0.718)
+  La frase está más cerca del centroide que el 83% de los textos del cluster
+
+MÉTRICAS DEL MODELO DE CEA
+  k elegida (silueta): 4   k real (nº de sentidos): 4
+  Silueta (entrenamiento): 0.151
+  En prueba (textos no vistos): ARI 0.821 · NMI 0.892 · pureza 0.938
+
+Guardado en modelos_unificado/demo/demo_CEA_9.txt (y añadido a modelos_unificado/demo/todas_las_pruebas.txt)

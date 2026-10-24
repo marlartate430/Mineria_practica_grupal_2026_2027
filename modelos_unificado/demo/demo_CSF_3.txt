@@ -1,0 +1,73 @@
+Prueba del 24/10/2026 10:58
+Abreviatura: CSF
+Frase: granulocyte CSF increased neutrophil counts after chemotherapy
+
+Modelo entrenado con bert_media + PCA 80% (coseno, random)
+
+CSF: 9 clusters (6 sentidos reales)
+  cluster 0: predomina 'colonystimulating factors' (8 de sus 9 textos de entrenamiento)
+  cluster 1: predomina 'classical swine fever' (8 de sus 9 textos de entrenamiento)
+  cluster 2: predomina 'classical swine fever' (5 de sus 9 textos de entrenamiento)
+  cluster 3: predomina 'cerebrospinal' (5 de sus 10 textos de entrenamiento)
+  cluster 4: predomina 'cerebrospinal' (6 de sus 11 textos de entrenamiento)
+  cluster 5: predomina 'cytostatic factor' (15 de sus 18 textos de entrenamiento)
+  cluster 6: predomina 'colonystimulating factors' (7 de sus 7 textos de entrenamiento)
+  cluster 7: predomina 'coronary sinus flow' (15 de sus 17 textos de entrenamiento)
+  cluster 8: predomina 'cerebrospinal fluid samples' (5 de sus 6 textos de entrenamiento)
+
+======================================================================
+PASO A PASO
+======================================================================
+
+1. Ventana de ±25 palabras alrededor de 'CSF' (sin puntuación, en minúsculas salvo la abreviatura):
+   granulocyte CSF increased neutrophil counts after chemotherapy
+
+2. bert_media la parte en 7 tokens ('##' = trozo pegado al anterior):
+   granulocyte | csf | increased | neutrophil | counts | after | chemotherapy
+
+3. Vector de la frase: 768 números. Los 5 primeros: [-0.04   0.14   0.061 -0.174 -0.165]
+
+4. PCA propio de CSF: se resta su media y se proyecta en sus 34 componentes -> 34 números. Los 5 primeros: [ 0.174  0.286 -0.645 -0.798 -0.473]
+
+5. Distancia (coseno) a cada uno de los 9 centroides de CSF:
+   -> cluster 6: 0.519   (predomina 'colonystimulating factors')
+      cluster 0: 0.725   (predomina 'colonystimulating factors')
+      cluster 3: 0.892   (predomina 'cerebrospinal')
+      cluster 4: 0.993   (predomina 'cerebrospinal')
+      cluster 5: 1.043   (predomina 'cytostatic factor')
+      cluster 7: 1.051   (predomina 'coronary sinus flow')
+      cluster 1: 1.182   (predomina 'classical swine fever')
+      cluster 8: 1.186   (predomina 'cerebrospinal fluid samples')
+      cluster 2: 1.202   (predomina 'classical swine fever')
+   Gana el más cercano: cluster 6
+
+6. Los 5 textos de entrenamiento del cluster 6 más parecidos a la frase:
+   distancia 0.282 · cluster 6 · sentido real 'colonystimulating factors'
+      ...clinical practice adherence to current guidelines that recommend primary prophylaxis pp with granulocyte CSF gcsfs for patients at high â¥ ...
+   distancia 0.373 · cluster 6 · sentido real 'colonystimulating factors'
+      ...number of hematopoietic progenitor stem cells following highdose chemotherapy with the support of granulocyte colonystimulating factors afte...
+   distancia 0.513 · cluster 6 · sentido real 'colonystimulating factors'
+      ...we reviewed the evolution of the methods used in costeffectiveness analyses of granulocyte CSF gcsfs in the primary and AA prevention of feb...
+   distancia 0.773 · cluster 6 · sentido real 'colonystimulating factors'
+      ...mechanism by which interferongamma enhances the elimination of candida and consequently the agent is not effective in severely granulocytope...
+   distancia 0.789 · cluster 6 · sentido real 'colonystimulating factors'
+      ...approximately half of all patients receiving chemotherapy thus neutropenia continues to be a significant and potentially lifethreatening sid...
+
+7. Imagen:
+  modelos_unificado/demo/demo_CSF_3.png
+
+Texto: granulocyte CSF increased neutrophil counts after chemotherapy
+-> asignado al cluster 6 (predomina 'colonystimulating factors')
+
+MÉTRICAS DEL CLUSTER 6
+  Tamaño: 7 textos de entrenamiento
+  Pureza: 7/7 (100%) son del sentido que predomina, 'colonystimulating factors'
+  Distancia de la frase al centroide: 0.519  (textos del cluster: media 0.283, máxima 0.392)
+  La frase está más cerca del centroide que el 0% de los textos del cluster
+
+MÉTRICAS DEL MODELO DE CSF
+  k elegida (silueta): 9   k real (nº de sentidos): 6
+  Silueta (entrenamiento): 0.143
+  En prueba (textos no vistos): ARI 0.553 · NMI 0.789 · pureza 0.833
+
+Guardado en modelos_unificado/demo/demo_CSF_3.txt (y añadido a modelos_unificado/demo/todas_las_pruebas.txt)

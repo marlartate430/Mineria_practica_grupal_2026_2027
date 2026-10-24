@@ -1,0 +1,35 @@
+# Frases de prueba para CEA en inglés, euskera y castellano (los 4 sentidos en cada idioma).
+# Las líneas que empiezan por "#" no se usan.
+#   python probar_modelo_unificado.py --abreviatura CEA --paso-a-paso --archivo frases_demo.txt
+# Sentidos de CEA en el modelo: carcinoembryonic, continuous epidural analgesia,
+# costeffectiveness analysis y enzyme activity.
+
+# ---------- Inglés ----------
+# carcinoembryonic
+serum CEA levels were elevated in patients with colorectal cancer before surgery
+# continuous epidural analgesia
+the CEA of epidural analgesia during labour showed it was cheaper per patient
+# costeffectiveness analysis
+a CEA comparing screening strategies estimated the cost per quality adjusted life year gained
+# enzyme activity
+CEA in liver homogenates was measured spectrophotometrically after incubation with the substrate
+
+# ---------- Euskera ----------
+# carcinoembryonic
+CEA serikoaren mailak altuak ziren koloneko minbizia zuten pazienteetan ebakuntzaren aurretik
+# continuous epidural analgesia
+erditzean CEA analgesia epiduralak mina ondo kontrolatu zuen eta morfina gutxiago behar izan zen
+# costeffectiveness analysis
+CEA azterketak erakutsi zuen baheketa programak kostu txikiagoa zuela bizi urte bakoitzeko
+# enzyme activity
+gibeleko homogeneizatuetan CEA espektrofotometria bidez neurtu zen substratuarekin inkubatu ondoren
+
+# ---------- Castellano ----------
+# carcinoembryonic
+los niveles séricos de CEA estaban elevados en pacientes con cáncer colorrectal antes de la cirugía
+# continuous epidural analgesia
+el CEA de la analgesia epidural durante el parto demostró que era más barato por paciente
+# costeffectiveness analysis
+un CEA comparando estrategias de cribado estimó el coste por año de vida ajustado por calidad ganado
+# enzyme activity
+la CEA en homogeneizados de hígado se midió por espectrofotometría tras incubar con el sustrato

@@ -12,3 +12,8 @@ informe/
 
 # Figuras del informe (sí se suben, para que las tenga todo el grupo)
 !figuras/*.png
+*.npz
+*.log
+
+# Pruebas de la demo (imagen + salida de cada frase)
+!modelos_unificado/demo/*.png

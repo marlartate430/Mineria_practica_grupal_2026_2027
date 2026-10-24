@@ -1,0 +1,69 @@
+
+######################################################################
+FRASE 4 DE 12
+######################################################################
+Prueba del 24/10/2026 12:22
+Abreviatura: CEA
+Frase: CEA in liver homogenates was measured spectrophotometrically after incubation with the substrate
+
+Modelo entrenado con bert_media + PCA 80% (coseno, random)
+
+CEA: 4 clusters (4 sentidos reales)
+  cluster 0: predomina 'continuous epidural analgesia' (16 de sus 18 textos de entrenamiento)
+  cluster 1: predomina 'carcinoembryonic' (16 de sus 19 textos de entrenamiento)
+  cluster 2: predomina 'costeffectiveness analysis' (13 de sus 13 textos de entrenamiento)
+  cluster 3: predomina 'enzyme activity' (14 de sus 14 textos de entrenamiento)
+
+======================================================================
+PASO A PASO
+======================================================================
+
+1. Ventana de ±25 palabras alrededor de 'CEA' (sin puntuación, en minúsculas salvo la abreviatura):
+   CEA in liver homogenates was measured spectrophotometrically after incubation with the substrate
+
+2. bert_media la parte en 13 tokens ('##' = trozo pegado al anterior):
+   cea | in | liver | homogenates | was | measured | spectrophotometric | ##ally | after | incubation | with | the | substrate
+   De sus 12 palabras: 11 están enteras en el vocabulario (92%), 1 se parten en trozos (8%) y 0 son [UNK]
+      spectrophotometrically -> spectrophotometric | ##ally
+
+3. Vector de la frase: 768 números. Los 5 primeros: [-0.027  0.071 -0.032 -0.061 -0.061]
+
+4. PCA propio de CEA: se resta su media y se proyecta en sus 27 componentes -> 27 números. Los 5 primeros: [ 0.356  0.438  0.164 -0.254 -0.404]
+
+5. Distancia (coseno) a cada uno de los 4 centroides de CEA:
+   -> cluster 3: 0.352   (predomina 'enzyme activity')
+      cluster 1: 1.032   (predomina 'carcinoembryonic')
+      cluster 2: 1.257   (predomina 'costeffectiveness analysis')
+      cluster 0: 1.308   (predomina 'continuous epidural analgesia')
+   Gana el más cercano: cluster 3
+
+6. Los 5 textos de entrenamiento del cluster 3 más parecidos a la frase:
+   distancia 0.408 · cluster 3 · sentido real 'enzyme activity'
+      ...large aggregates of sedimentable enzyme specifically autophosphorylation of camkinase in mm atp at ph resulted in the formation of sedimenta...
+   distancia 0.431 · cluster 3 · sentido real 'enzyme activity'
+      ...and la decreased the inhibition of enzyme activity by as the inhibition of enzyme activity was also reduced by in vivo supply of dtnb the CE...
+   distancia 0.440 · cluster 3 · sentido real 'enzyme activity'
+      ...resulted in significant increases in tcac mrna expression approximately fold quantified by realtime pcr and protein levels approximately fol...
+   distancia 0.478 · cluster 3 · sentido real 'enzyme activity'
+      ...prior injection of puromycin suggesting de novo protein synthesis administration of insulin to normal rats on stock diet did not influence t...
+   distancia 0.522 · cluster 3 · sentido real 'enzyme activity'
+      ...was activated T3 hours of illumination thus the diurnal fluctuation in maize sucrose phosphate synthase can be explained by some form of lig...
+
+7. Imagen:
+  modelos_unificado/demo/demo_CEA_11.png
+
+Texto: CEA in liver homogenates was measured spectrophotometrically after incubation with the substrate
+-> asignado al cluster 3 (predomina 'enzyme activity')
+
+MÉTRICAS DEL CLUSTER 3
+  Tamaño: 14 textos de entrenamiento
+  Pureza: 14/14 (100%) son del sentido que predomina, 'enzyme activity'
+  Distancia de la frase al centroide: 0.352  (textos del cluster: media 0.409, máxima 0.628)
+  La frase está más cerca del centroide que el 57% de los textos del cluster
+
+MÉTRICAS DEL MODELO DE CEA
+  k elegida (silueta): 4   k real (nº de sentidos): 4
+  Silueta (entrenamiento): 0.151
+  En prueba (textos no vistos): ARI 0.821 · NMI 0.892 · pureza 0.938
+
+Guardado en modelos_unificado/demo/demo_CEA_11.txt (y añadido a modelos_unificado/demo/todas_las_pruebas.txt)

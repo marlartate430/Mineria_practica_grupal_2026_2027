@@ -1,0 +1,76 @@
+
+######################################################################
+FRASE 9 DE 12
+######################################################################
+Prueba del 24/10/2026 12:22
+Abreviatura: CEA
+Frase: los niveles séricos de CEA estaban elevados en pacientes con cáncer colorrectal antes de la cirugía
+
+Modelo entrenado con bert_media + PCA 80% (coseno, random)
+
+CEA: 4 clusters (4 sentidos reales)
+  cluster 0: predomina 'continuous epidural analgesia' (16 de sus 18 textos de entrenamiento)
+  cluster 1: predomina 'carcinoembryonic' (16 de sus 19 textos de entrenamiento)
+  cluster 2: predomina 'costeffectiveness analysis' (13 de sus 13 textos de entrenamiento)
+  cluster 3: predomina 'enzyme activity' (14 de sus 14 textos de entrenamiento)
+
+======================================================================
+PASO A PASO
+======================================================================
+
+1. Ventana de ±25 palabras alrededor de 'CEA' (sin puntuación, en minúsculas salvo la abreviatura):
+   los niveles séricos de CEA estaban elevados en pacientes con cáncer colorrectal antes de la cirugía
+
+2. bert_media la parte en 28 tokens ('##' = trozo pegado al anterior):
+   los | niv | ##eles | ser | ##ico | ##s | de | cea | estab | ##an | elev | ##ados | en | pac | ##ient | ##es | con | cancer | color | ##rect | ##al | ante | ##s | de | la | cir | ##ug | ##ia
+   De sus 16 palabras: 8 están enteras en el vocabulario (50%), 8 se parten en trozos (50%) y 0 son [UNK]
+      niveles -> niv | ##eles
+      séricos -> ser | ##ico | ##s
+      estaban -> estab | ##an
+      elevados -> elev | ##ados
+      pacientes -> pac | ##ient | ##es
+      colorrectal -> color | ##rect | ##al
+      antes -> ante | ##s
+      cirugía -> cir | ##ug | ##ia
+
+3. Vector de la frase: 768 números. Los 5 primeros: [ 0.063 -0.009  0.247  0.063 -0.246]
+
+4. PCA propio de CEA: se resta su media y se proyecta en sus 27 componentes -> 27 números. Los 5 primeros: [-0.196 -0.728  0.04   0.225  0.449]
+
+5. Distancia (coseno) a cada uno de los 4 centroides de CEA:
+   -> cluster 0: 0.754   (predomina 'continuous epidural analgesia')
+      cluster 1: 0.929   (predomina 'carcinoembryonic')
+      cluster 2: 0.941   (predomina 'costeffectiveness analysis')
+      cluster 3: 1.442   (predomina 'enzyme activity')
+   Gana el más cercano: cluster 0
+
+6. Los 5 textos de entrenamiento del cluster 0 más parecidos a la frase:
+   distancia 0.464 · cluster 0 · sentido real 'continuous epidural analgesia'
+      ...outcome after major ABD surgery postoperative epidural analgesia with local anesthetics significantly reduces postoperative ileus and pulmon...
+   distancia 0.578 · cluster 0 · sentido real 'continuous epidural analgesia'
+      ...transversus abdominis plane block is an effective postoperative analgesic technique T3 abdominal surgery but no study has compared continuou...
+   distancia 0.738 · cluster 0 · sentido real 'continuous epidural analgesia'
+      ...been effectively used in such patients for pain control however this method does not provide pain relief to all patients the efficacy and co...
+   distancia 0.749 · cluster 0 · sentido real 'continuous epidural analgesia'
+      ...used this effect is reduced when low concentrations of local anesthetic are used in combination with fatsoluble morphinated agent el finally...
+   distancia 0.769 · cluster 0 · sentido real 'continuous epidural analgesia'
+      ...with or without a local anesthetic agent is a commonly employed technique for PR T3 thoracotomy in this study we prospectively evaluated the...
+
+7. Imagen:
+  modelos_unificado/demo/demo_CEA_16.png
+
+Texto: los niveles séricos de CEA estaban elevados en pacientes con cáncer colorrectal antes de la cirugía
+-> asignado al cluster 0 (predomina 'continuous epidural analgesia')
+
+MÉTRICAS DEL CLUSTER 0
+  Tamaño: 18 textos de entrenamiento
+  Pureza: 16/18 (89%) son del sentido que predomina, 'continuous epidural analgesia'
+  Distancia de la frase al centroide: 0.754  (textos del cluster: media 0.422, máxima 0.718)
+  La frase está más cerca del centroide que el 0% de los textos del cluster
+
+MÉTRICAS DEL MODELO DE CEA
+  k elegida (silueta): 4   k real (nº de sentidos): 4
+  Silueta (entrenamiento): 0.151
+  En prueba (textos no vistos): ARI 0.821 · NMI 0.892 · pureza 0.938
+
+Guardado en modelos_unificado/demo/demo_CEA_16.txt (y añadido a modelos_unificado/demo/todas_las_pruebas.txt)

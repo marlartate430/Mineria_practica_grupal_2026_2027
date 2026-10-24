@@ -1,0 +1,67 @@
+Prueba del 24/10/2026 10:59
+Abreviatura: HR
+Frase: tobacco leaves showed an HR with localized cell death after pathogen infection
+
+Modelo entrenado con bert_media + PCA 80% (coseno, random)
+
+HR: 6 clusters (10 sentidos reales)
+  cluster 0: predomina 'hormone receptor' (12 de sus 19 textos de entrenamiento)
+  cluster 1: predomina 'hybrid resistance' (15 de sus 19 textos de entrenamiento)
+  cluster 2: predomina 'histamine release' (16 de sus 40 textos de entrenamiento)
+  cluster 3: predomina 'hypersensitive response' (15 de sus 28 textos de entrenamiento)
+  cluster 4: predomina 'heptad repeat' (16 de sus 28 textos de entrenamiento)
+  cluster 5: predomina 'hepatic resection' (14 de sus 26 textos de entrenamiento)
+
+======================================================================
+PASO A PASO
+======================================================================
+
+1. Ventana de ±25 palabras alrededor de 'HR' (sin puntuación, en minúsculas salvo la abreviatura):
+   tobacco leaves showed an HR with localized cell death after pathogen infection
+
+2. bert_media la parte en 12 tokens ('##' = trozo pegado al anterior):
+   tobacco | leaves | showed | an | hr | with | localized | cell | death | after | pathogen | infection
+
+3. Vector de la frase: 768 números. Los 5 primeros: [ 0.026 -0.064  0.165  0.003 -0.027]
+
+4. PCA propio de HR: se resta su media y se proyecta en sus 52 componentes -> 52 números. Los 5 primeros: [ 1.363 -0.223 -0.804  0.441 -0.096]
+
+5. Distancia (coseno) a cada uno de los 6 centroides de HR:
+   -> cluster 3: 0.257   (predomina 'hypersensitive response')
+      cluster 4: 1.024   (predomina 'heptad repeat')
+      cluster 1: 1.215   (predomina 'hybrid resistance')
+      cluster 0: 1.219   (predomina 'hormone receptor')
+      cluster 5: 1.232   (predomina 'hepatic resection')
+      cluster 2: 1.324   (predomina 'histamine release')
+   Gana el más cercano: cluster 3
+
+6. Los 5 textos de entrenamiento del cluster 3 más parecidos a la frase:
+   distancia 0.282 · cluster 3 · sentido real 'hypersensitive response'
+      ...arabidopsis mutant acd cell death in acd exhibits characteristics of animal apoptosis monitored by flow cytometry and acd constitutively exp...
+   distancia 0.330 · cluster 3 · sentido real 'hypersensitive reaction'
+      ...in tobacco mosaic virus tmvinfected tobacco plants carrying the n resistance gene a HR or response hr occurs to enclose the virus in the inf...
+   distancia 0.361 · cluster 3 · sentido real 'hypersensitive response'
+      ...summary nonspecific penetration resistance due to papilla formation and racespecific HR hr can both contribute to blumeria graminis resistan...
+   distancia 0.420 · cluster 3 · sentido real 'hypersensitive response'
+      ...p infestanspotato system no well balanced with the superoxide level was tuned with a battery of sadependent defense genes leading to the est...
+   distancia 0.432 · cluster 3 · sentido real 'hypersensitive response'
+      ...to investigate the role of salicylic acid sa in the HR hr its accumulation was compromised during different phases of lesion OD by different...
+
+7. Imagen:
+  modelos_unificado/demo/demo_HR_2.png
+
+Texto: tobacco leaves showed an HR with localized cell death after pathogen infection
+-> asignado al cluster 3 (predomina 'hypersensitive response')
+
+MÉTRICAS DEL CLUSTER 3
+  Tamaño: 28 textos de entrenamiento
+  Pureza: 15/28 (54%) son del sentido que predomina, 'hypersensitive response'
+  Distancia de la frase al centroide: 0.257  (textos del cluster: media 0.412, máxima 0.809)
+  La frase está más cerca del centroide que el 82% de los textos del cluster
+
+MÉTRICAS DEL MODELO DE HR
+  k elegida (silueta): 6   k real (nº de sentidos): 10
+  Silueta (entrenamiento): 0.101
+  En prueba (textos no vistos): ARI 0.294 · NMI 0.613 · pureza 0.475
+
+Guardado en modelos_unificado/demo/demo_HR_2.txt (y añadido a modelos_unificado/demo/todas_las_pruebas.txt)

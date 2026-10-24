@@ -1,0 +1,73 @@
+Prueba del 24/10/2026 10:59
+Abreviatura: ER
+Frase: ER positive breast tumours responded to tamoxifen therapy
+
+Modelo entrenado con bert_media + PCA 80% (coseno, random)
+
+ER: 9 clusters (13 sentidos reales)
+  cluster 0: predomina 'emergency room' (13 de sus 16 textos de entrenamiento)
+  cluster 1: predomina 'endoscopic resection' (16 de sus 17 textos de entrenamiento)
+  cluster 2: predomina 'oestrogen receptor status' (16 de sus 34 textos de entrenamiento)
+  cluster 3: predomina 'electrical resistance' (5 de sus 16 textos de entrenamiento)
+  cluster 4: predomina 'extraction ratio' (11 de sus 14 textos de entrenamiento)
+  cluster 5: predomina 'external rotation' (15 de sus 16 textos de entrenamiento)
+  cluster 6: predomina 'endoplasmic reticular' (9 de sus 29 textos de entrenamiento)
+  cluster 7: predomina 'energy retention' (14 de sus 39 textos de entrenamiento)
+  cluster 8: predomina 'electrorheological' (16 de sus 27 textos de entrenamiento)
+
+======================================================================
+PASO A PASO
+======================================================================
+
+1. Ventana de ±25 palabras alrededor de 'ER' (sin puntuación, en minúsculas salvo la abreviatura):
+   ER positive breast tumours responded to tamoxifen therapy
+
+2. bert_media la parte en 8 tokens ('##' = trozo pegado al anterior):
+   er | positive | breast | tumours | responded | to | tamoxifen | therapy
+
+3. Vector de la frase: 768 números. Los 5 primeros: [ 0.078  0.102 -0.06  -0.188 -0.135]
+
+4. PCA propio de ER: se resta su media y se proyecta en sus 58 componentes -> 58 números. Los 5 primeros: [ 1.186  0.239 -0.462  0.239  0.207]
+
+5. Distancia (coseno) a cada uno de los 9 centroides de ER:
+   -> cluster 2: 0.461   (predomina 'oestrogen receptor status')
+      cluster 1: 0.789   (predomina 'endoscopic resection')
+      cluster 6: 0.792   (predomina 'endoplasmic reticular')
+      cluster 3: 1.035   (predomina 'electrical resistance')
+      cluster 5: 1.135   (predomina 'external rotation')
+      cluster 0: 1.224   (predomina 'emergency room')
+      cluster 4: 1.245   (predomina 'extraction ratio')
+      cluster 7: 1.247   (predomina 'energy retention')
+      cluster 8: 1.248   (predomina 'electrorheological')
+   Gana el más cercano: cluster 2
+
+6. Los 5 textos de entrenamiento del cluster 2 más parecidos a la frase:
+   distancia 0.395 · cluster 2 · sentido real 'oestrogen receptor status'
+      ...cytoplasmic in and nuclear in of mtpositive cases higher mt scores were associated with poorer HG p but were independent of age tumour size ...
+   distancia 0.475 · cluster 2 · sentido real 'oestrogen receptor status'
+      ...or negative using univariate analysis it was found that distant metastasis diseasefree and overall survival were correlated to tumour size n...
+   distancia 0.477 · cluster 2 · sentido real 'oestrogen receptors'
+      ...for adolescent males oestrogen and progesterone receptors were measured with a steroid binding dextran coated charcoal assay which was used ...
+   distancia 0.478 · cluster 2 · sentido real 'oestrogen receptor status'
+      ...pge and FP secretion in vitro were measured from tissues of patients with breast tumours and examined in relation to ER prostaglandin secret...
+   distancia 0.486 · cluster 2 · sentido real 'oestrogen receptor status'
+      ...of this study was to assess whether tamoxifen tam and ici ici could induce apoptosis in human breast cancer and whether this was related to ...
+
+7. Imagen:
+  modelos_unificado/demo/demo_ER_2.png
+
+Texto: ER positive breast tumours responded to tamoxifen therapy
+-> asignado al cluster 2 (predomina 'oestrogen receptor status')
+
+MÉTRICAS DEL CLUSTER 2
+  Tamaño: 34 textos de entrenamiento
+  Pureza: 16/34 (47%) son del sentido que predomina, 'oestrogen receptor status'
+  Distancia de la frase al centroide: 0.461  (textos del cluster: media 0.443, máxima 0.708)
+  La frase está más cerca del centroide que el 44% de los textos del cluster
+
+MÉTRICAS DEL MODELO DE ER
+  k elegida (silueta): 9   k real (nº de sentidos): 13
+  Silueta (entrenamiento): 0.117
+  En prueba (textos no vistos): ARI 0.355 · NMI 0.694 · pureza 0.558
+
+Guardado en modelos_unificado/demo/demo_ER_2.txt (y añadido a modelos_unificado/demo/todas_las_pruebas.txt)

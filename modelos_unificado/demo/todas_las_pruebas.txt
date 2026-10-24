@@ -1,0 +1,130 @@
+[demo_CEA_1] 24/10/2026 10:57 · CEA
+  Frase: the CEA of epidural analgesia during labour showed it was cheaper per patient
+  -> cluster 0 (predomina 'continuous epidural analgesia'), distancia 0.296
+     segundo: cluster 2 (predomina 'costeffectiveness analysis'), distancia 0.891
+
+[demo_CEA_2] 24/10/2026 10:57 · CEA
+  Frase: serum CEA levels were elevated in patients with colorectal cancer before surgery
+  -> cluster 1 (predomina 'carcinoembryonic'), distancia 0.566
+     segundo: cluster 0 (predomina 'continuous epidural analgesia'), distancia 0.896
+
+[demo_CEA_3] 24/10/2026 10:57 · CEA
+  Frase: a CEA comparing screening strategies estimated the cost per quality adjusted life year gained
+  -> cluster 2 (predomina 'costeffectiveness analysis'), distancia 0.323
+     segundo: cluster 0 (predomina 'continuous epidural analgesia'), distancia 1.018
+
+[demo_CEA_4] 24/10/2026 10:57 · CEA
+  Frase: CEA in liver homogenates was measured spectrophotometrically after incubation with the substrate
+  -> cluster 3 (predomina 'enzyme activity'), distancia 0.352
+     segundo: cluster 1 (predomina 'carcinoembryonic'), distancia 1.032
+
+[demo_CSF_1] 24/10/2026 10:58 · CSF
+  Frase: CSF samples obtained by lumbar puncture showed elevated protein in patients with meningitis
+  -> cluster 3 (predomina 'cerebrospinal'), distancia 0.381
+     segundo: cluster 8 (predomina 'cerebrospinal fluid samples'), distancia 0.458
+
+[demo_CSF_3] 24/10/2026 10:58 · CSF
+  Frase: granulocyte CSF increased neutrophil counts after chemotherapy
+  -> cluster 6 (predomina 'colonystimulating factors'), distancia 0.519
+     segundo: cluster 0 (predomina 'colonystimulating factors'), distancia 0.725
+
+[demo_ER_1] 24/10/2026 10:58 · ER
+  Frase: patients presenting to the ER with chest pain were triaged by nurses
+  -> cluster 0 (predomina 'emergency room'), distancia 0.302
+     segundo: cluster 1 (predomina 'endoscopic resection'), distancia 0.756
+
+[demo_ER_2] 24/10/2026 10:59 · ER
+  Frase: ER positive breast tumours responded to tamoxifen therapy
+  -> cluster 2 (predomina 'oestrogen receptor status'), distancia 0.461
+     segundo: cluster 1 (predomina 'endoscopic resection'), distancia 0.789
+
+[demo_HR_1] 24/10/2026 10:59 · HR
+  Frase: repair of double strand breaks by HR requires BRCA2 and RAD51
+  -> cluster 4 (predomina 'heptad repeat'), distancia 0.579
+     segundo: cluster 0 (predomina 'hormone receptor'), distancia 0.852
+
+[demo_HR_2] 24/10/2026 10:59 · HR
+  Frase: tobacco leaves showed an HR with localized cell death after pathogen infection
+  -> cluster 3 (predomina 'hypersensitive response'), distancia 0.257
+     segundo: cluster 4 (predomina 'heptad repeat'), distancia 1.024
+
+[demo_CSF_2] 24/10/2026 11:00 · CSF
+  Frase: pigs infected with CSF virus developed fever and haemorrhages and the herd was culled
+  -> cluster 1 (predomina 'classical swine fever'), distancia 0.335
+     segundo: cluster 2 (predomina 'classical swine fever'), distancia 0.708
+
+[demo_CEA_5] 24/10/2026 12:12 · CEA
+  Frase: serum CEA levels were elevated in patients with colorectal cancer before surgery
+  -> cluster 1 (predomina 'carcinoembryonic'), distancia 0.566
+     segundo: cluster 0 (predomina 'continuous epidural analgesia'), distancia 0.896
+
+[demo_CEA_6] 24/10/2026 12:12 · CEA
+  Frase: los niveles séricos de CEA estaban elevados en pacientes con cáncer colorrectal antes de la cirugía
+  -> cluster 0 (predomina 'continuous epidural analgesia'), distancia 0.754
+     segundo: cluster 1 (predomina 'carcinoembryonic'), distancia 0.929
+
+[demo_CEA_7] 24/10/2026 12:12 · CEA
+  Frase: el CEA de la analgesia epidural durante el parto demostró que era más barato por paciente
+  -> cluster 0 (predomina 'continuous epidural analgesia'), distancia 0.606
+     segundo: cluster 2 (predomina 'costeffectiveness analysis'), distancia 0.949
+
+[demo_CEA_8] 24/10/2026 12:22 · CEA
+  Frase: serum CEA levels were elevated in patients with colorectal cancer before surgery
+  -> cluster 1 (predomina 'carcinoembryonic'), distancia 0.566
+     segundo: cluster 0 (predomina 'continuous epidural analgesia'), distancia 0.896
+
+[demo_CEA_9] 24/10/2026 12:22 · CEA
+  Frase: the CEA of epidural analgesia during labour showed it was cheaper per patient
+  -> cluster 0 (predomina 'continuous epidural analgesia'), distancia 0.296
+     segundo: cluster 2 (predomina 'costeffectiveness analysis'), distancia 0.891
+
+[demo_CEA_10] 24/10/2026 12:22 · CEA
+  Frase: a CEA comparing screening strategies estimated the cost per quality adjusted life year gained
+  -> cluster 2 (predomina 'costeffectiveness analysis'), distancia 0.323
+     segundo: cluster 0 (predomina 'continuous epidural analgesia'), distancia 1.018
+
+[demo_CEA_11] 24/10/2026 12:22 · CEA
+  Frase: CEA in liver homogenates was measured spectrophotometrically after incubation with the substrate
+  -> cluster 3 (predomina 'enzyme activity'), distancia 0.352
+     segundo: cluster 1 (predomina 'carcinoembryonic'), distancia 1.032
+
+[demo_CEA_12] 24/10/2026 12:22 · CEA
+  Frase: CEA serikoaren mailak altuak ziren koloneko minbizia zuten pazienteetan ebakuntzaren aurretik
+  -> cluster 1 (predomina 'carcinoembryonic'), distancia 0.694
+     segundo: cluster 2 (predomina 'costeffectiveness analysis'), distancia 1.097
+
+[demo_CEA_13] 24/10/2026 12:22 · CEA
+  Frase: erditzean CEA analgesia epiduralak mina ondo kontrolatu zuen eta morfina gutxiago behar izan zen
+  -> cluster 1 (predomina 'carcinoembryonic'), distancia 0.637
+     segundo: cluster 2 (predomina 'costeffectiveness analysis'), distancia 1.056
+
+[demo_CEA_14] 24/10/2026 12:22 · CEA
+  Frase: CEA azterketak erakutsi zuen baheketa programak kostu txikiagoa zuela bizi urte bakoitzeko
+  -> cluster 1 (predomina 'carcinoembryonic'), distancia 0.724
+     segundo: cluster 3 (predomina 'enzyme activity'), distancia 0.996
+
+[demo_CEA_15] 24/10/2026 12:22 · CEA
+  Frase: gibeleko homogeneizatuetan CEA espektrofotometria bidez neurtu zen substratuarekin inkubatu ondoren
+  -> cluster 1 (predomina 'carcinoembryonic'), distancia 0.699
+     segundo: cluster 2 (predomina 'costeffectiveness analysis'), distancia 1.076
+
+[demo_CEA_16] 24/10/2026 12:22 · CEA
+  Frase: los niveles séricos de CEA estaban elevados en pacientes con cáncer colorrectal antes de la cirugía
+  -> cluster 0 (predomina 'continuous epidural analgesia'), distancia 0.754
+     segundo: cluster 1 (predomina 'carcinoembryonic'), distancia 0.929
+
+[demo_CEA_17] 24/10/2026 12:22 · CEA
+  Frase: el CEA de la analgesia epidural durante el parto demostró que era más barato por paciente
+  -> cluster 0 (predomina 'continuous epidural analgesia'), distancia 0.606
+     segundo: cluster 2 (predomina 'costeffectiveness analysis'), distancia 0.949
+
+[demo_CEA_18] 24/10/2026 12:22 · CEA
+  Frase: un CEA comparando estrategias de cribado estimó el coste por año de vida ajustado por calidad ganado
+  -> cluster 2 (predomina 'costeffectiveness analysis'), distancia 0.546
+     segundo: cluster 0 (predomina 'continuous epidural analgesia'), distancia 0.979
+
+[demo_CEA_19] 24/10/2026 12:22 · CEA
+  Frase: la CEA en homogeneizados de hígado se midió por espectrofotometría tras incubar con el sustrato
+  -> cluster 2 (predomina 'costeffectiveness analysis'), distancia 0.854
+     segundo: cluster 1 (predomina 'carcinoembryonic'), distancia 0.888
+

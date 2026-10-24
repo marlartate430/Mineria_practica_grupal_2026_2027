@@ -230,15 +230,16 @@ def figura_frase(modelo, abrev, entrena, X_entrena, vector, texto, ruta, n_vecin
     for c in np.unique(etiquetas):
         cx, cy = P[etiquetas == c].mean(axis=0)
         ax.scatter(cx, cy, s=170, marker="X", color=color(c), edgecolors=FONDO, linewidths=2, zorder=4)
-    for i in np.argsort(cercania)[:n_vecinos]:
+    # Los textos más cercanos se buscan solo dentro del cluster al que se asigna la frase
+    for i in [i for i in np.argsort(cercania) if etiquetas[i] == elegido][:n_vecinos]:
         ax.plot([p[0], P[i, 0]], [p[1], P[i, 1]], color=TEXTO_SUAVE, linewidth=0.8, linestyle="--", zorder=3)
     ax.scatter(*p, s=420, marker="*", color=color(elegido), edgecolors=TEXTO, linewidths=1.2, zorder=5)
     ax.annotate("tu frase", p, xytext=(10, 10), textcoords="offset points", fontsize=9, color=TEXTO)
     ax.set_xticks([]), ax.set_yticks([])
     for borde in ax.spines.values():
         borde.set_color(BORDE)
-    ax.set_title(f"Textos de entrenamiento de {abrev} por cluster  (✖ centro del cluster, -- sus {n_vecinos} más "
-                 f"cercanos)", color=TEXTO, loc="left", fontsize=10)
+    ax.set_title(f"Textos de entrenamiento de {abrev} por cluster  (✖ centro del cluster, -- los {n_vecinos} más "
+                 f"cercanos de su cluster)", color=TEXTO, loc="left", fontsize=10)
 
     orden = np.argsort(distancias)[::-1]
     y = np.arange(len(orden))

@@ -1,0 +1,68 @@
+
+######################################################################
+FRASE 1 DE 12
+######################################################################
+Prueba del 24/10/2026 12:22
+Abreviatura: CEA
+Frase: serum CEA levels were elevated in patients with colorectal cancer before surgery
+
+Modelo entrenado con bert_media + PCA 80% (coseno, random)
+
+CEA: 4 clusters (4 sentidos reales)
+  cluster 0: predomina 'continuous epidural analgesia' (16 de sus 18 textos de entrenamiento)
+  cluster 1: predomina 'carcinoembryonic' (16 de sus 19 textos de entrenamiento)
+  cluster 2: predomina 'costeffectiveness analysis' (13 de sus 13 textos de entrenamiento)
+  cluster 3: predomina 'enzyme activity' (14 de sus 14 textos de entrenamiento)
+
+======================================================================
+PASO A PASO
+======================================================================
+
+1. Ventana de ±25 palabras alrededor de 'CEA' (sin puntuación, en minúsculas salvo la abreviatura):
+   serum CEA levels were elevated in patients with colorectal cancer before surgery
+
+2. bert_media la parte en 12 tokens ('##' = trozo pegado al anterior):
+   serum | cea | levels | were | elevated | in | patients | with | colorectal | cancer | before | surgery
+   De sus 12 palabras: 12 están enteras en el vocabulario (100%), 0 se parten en trozos (0%) y 0 son [UNK]
+
+3. Vector de la frase: 768 números. Los 5 primeros: [ 0.093  0.089 -0.06  -0.117 -0.13 ]
+
+4. PCA propio de CEA: se resta su media y se proyecta en sus 27 componentes -> 27 números. Los 5 primeros: [ 0.034 -0.497  0.634 -0.499  0.717]
+
+5. Distancia (coseno) a cada uno de los 4 centroides de CEA:
+   -> cluster 1: 0.566   (predomina 'carcinoembryonic')
+      cluster 0: 0.896   (predomina 'continuous epidural analgesia')
+      cluster 3: 1.142   (predomina 'enzyme activity')
+      cluster 2: 1.373   (predomina 'costeffectiveness analysis')
+   Gana el más cercano: cluster 1
+
+6. Los 5 textos de entrenamiento del cluster 1 más parecidos a la frase:
+   distancia 0.340 · cluster 1 · sentido real 'carcinoembryonic'
+      ...were useful markers for selecting earlystage colorectal cancer patients the aim of the present study was to determine whether SS placenta gr...
+   distancia 0.483 · cluster 1 · sentido real 'carcinoembryonic'
+      ...it has been suggested that circulating immune complexes cic would provide a useful tumour marker system and that CEA antigen cea may form an...
+   distancia 0.506 · cluster 1 · sentido real 'carcinoembryonic'
+      ...we measured CEA antigen cea in cases with abnormal nipple discharge by means of enzyme immunoassay utilizing monoclonal anticea antibodies w...
+   distancia 0.575 · cluster 1 · sentido real 'carcinoembryonic'
+      ...multiple metastases to the vertebrae she received cyclophosphamide mgm epirubicin mgm and fluorouracil fu mgm cef chemotherapy every weeks u...
+   distancia 0.619 · cluster 1 · sentido real 'carcinoembryonic'
+      ...the SS kinetics of CEA antigen cea T3 resection of lung carcinoma are not well characterized its prognostic implications remain unclear this...
+
+7. Imagen:
+  modelos_unificado/demo/demo_CEA_8.png
+
+Texto: serum CEA levels were elevated in patients with colorectal cancer before surgery
+-> asignado al cluster 1 (predomina 'carcinoembryonic')
+
+MÉTRICAS DEL CLUSTER 1
+  Tamaño: 19 textos de entrenamiento
+  Pureza: 16/19 (84%) son del sentido que predomina, 'carcinoembryonic'
+  Distancia de la frase al centroide: 0.566  (textos del cluster: media 0.550, máxima 0.809)
+  La frase está más cerca del centroide que el 42% de los textos del cluster
+
+MÉTRICAS DEL MODELO DE CEA
+  k elegida (silueta): 4   k real (nº de sentidos): 4
+  Silueta (entrenamiento): 0.151
+  En prueba (textos no vistos): ARI 0.821 · NMI 0.892 · pureza 0.938
+
+Guardado en modelos_unificado/demo/demo_CEA_8.txt (y añadido a modelos_unificado/demo/todas_las_pruebas.txt)

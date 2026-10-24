@@ -1,0 +1,67 @@
+Prueba del 24/10/2026 10:59
+Abreviatura: HR
+Frase: repair of double strand breaks by HR requires BRCA2 and RAD51
+
+Modelo entrenado con bert_media + PCA 80% (coseno, random)
+
+HR: 6 clusters (10 sentidos reales)
+  cluster 0: predomina 'hormone receptor' (12 de sus 19 textos de entrenamiento)
+  cluster 1: predomina 'hybrid resistance' (15 de sus 19 textos de entrenamiento)
+  cluster 2: predomina 'histamine release' (16 de sus 40 textos de entrenamiento)
+  cluster 3: predomina 'hypersensitive response' (15 de sus 28 textos de entrenamiento)
+  cluster 4: predomina 'heptad repeat' (16 de sus 28 textos de entrenamiento)
+  cluster 5: predomina 'hepatic resection' (14 de sus 26 textos de entrenamiento)
+
+======================================================================
+PASO A PASO
+======================================================================
+
+1. Ventana de ±25 palabras alrededor de 'HR' (sin puntuación, en minúsculas salvo la abreviatura):
+   repair of double strand breaks by HR requires brca2 and rad51
+
+2. bert_media la parte en 11 tokens ('##' = trozo pegado al anterior):
+   repair | of | double | strand | breaks | by | hr | requires | brca2 | and | rad51
+
+3. Vector de la frase: 768 números. Los 5 primeros: [-0.064  0.052  0.027 -0.316 -0.109]
+
+4. PCA propio de HR: se resta su media y se proyecta en sus 52 componentes -> 52 números. Los 5 primeros: [0.387 1.751 0.153 0.491 0.129]
+
+5. Distancia (coseno) a cada uno de los 6 centroides de HR:
+   -> cluster 4: 0.579   (predomina 'heptad repeat')
+      cluster 0: 0.852   (predomina 'hormone receptor')
+      cluster 5: 0.966   (predomina 'hepatic resection')
+      cluster 1: 1.002   (predomina 'hybrid resistance')
+      cluster 3: 1.055   (predomina 'hypersensitive response')
+      cluster 2: 1.387   (predomina 'histamine release')
+   Gana el más cercano: cluster 4
+
+6. Los 5 textos de entrenamiento del cluster 4 más parecidos a la frase:
+   distancia 0.305 · cluster 4 · sentido real 'homologous recombination'
+      ...HR hr is a major mechanism for eliminating dna doublestrand breaks from chromosomes in this process the break termini are resected nucleolyt...
+   distancia 0.345 · cluster 4 · sentido real 'homologous recombination'
+      ...and the mrn complex to suppress both isochromosome formation and chromosome loss in accordance with these events resulting from extensive en...
+   distancia 0.400 · cluster 4 · sentido real 'homologous recombination'
+      ...characterized our results indicate that hrad can facilitate hradpromoted strand exchange through various degrees of mismatching we propose t...
+   distancia 0.508 · cluster 4 · sentido real 'homologous recombination'
+      ...of the order thermococcales C1 chromosomal inversions occur so frequently that even closely related genomes are difficult to align clearly n...
+   distancia 0.516 · cluster 4 · sentido real 'homologous recombination'
+      ...can directly induce dna doublestrand breaks and also oxidize nucleotides that are subsequently converted to doublestrand breaks during dna r...
+
+7. Imagen:
+  modelos_unificado/demo/demo_HR_1.png
+
+Texto: repair of double strand breaks by HR requires brca2 and rad51
+-> asignado al cluster 4 (predomina 'heptad repeat')
+
+MÉTRICAS DEL CLUSTER 4
+  Tamaño: 28 textos de entrenamiento
+  Pureza: 16/28 (57%) son del sentido que predomina, 'heptad repeat'
+  Distancia de la frase al centroide: 0.579  (textos del cluster: media 0.511, máxima 0.729)
+  La frase está más cerca del centroide que el 25% de los textos del cluster
+
+MÉTRICAS DEL MODELO DE HR
+  k elegida (silueta): 6   k real (nº de sentidos): 10
+  Silueta (entrenamiento): 0.101
+  En prueba (textos no vistos): ARI 0.294 · NMI 0.613 · pureza 0.475
+
+Guardado en modelos_unificado/demo/demo_HR_1.txt (y añadido a modelos_unificado/demo/todas_las_pruebas.txt)

@@ -67,7 +67,7 @@ aparta el 20 % de los textos de cada sentido como prueba: el modelo se entrena c
     - `--texto`: una frase en inglés con la abreviatura tal cual; se vectoriza con BiomedBERT.
     - `--paso-a-paso` (con `--texto`): enseña cada paso por dentro (ventana, tokens, vector, PCA de la abreviatura,
       distancia a cada centroide y los 5 textos de entrenamiento más parecidos) y guarda una imagen con la frase
-      sobre el mapa de la abreviatura en `modelos_unificado/graficos/frase_<abreviatura>_<n>.png`:
+      sobre el mapa de la abreviatura en `modelos_unificado/demo/demo_<abreviatura>_<n>.png` (y lo que sale en pantalla en `demo_<abreviatura>_<n>.txt`):
     ```bat
     python probar_modelo_unificado.py --abreviatura CEA --texto "the CEA of epidural analgesia during labour showed it was cheaper per patient" --paso-a-paso
     ```
